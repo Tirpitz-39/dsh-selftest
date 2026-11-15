@@ -55,7 +55,14 @@ Test discovery walks up at most 3 levels: changing `plugins/dsh-guard/lib/index.
 
 Requires Node.js 18+.
 
-**As a DSH plugin**: place the package in the profile's `node_modules` (or install it from npm) and enable it in DSH; the `selftest` tool is then available.
+**From npm** (recommended):
+
+```bash
+npm i -g dsh-selftest@0.1.1     # global CLI
+npx dsh-selftest@0.1.1           # or run it once
+```
+
+**As a DSH plugin**: `dsh plugin add dsh-selftest` (or place the package in the profile's `node_modules`) and enable it in DSH; the `selftest` tool is then available.
 
 **Standalone CLI**:
 
@@ -63,6 +70,8 @@ Requires Node.js 18+.
 node lib/cli.js                 # check the current directory's changes
 node lib/cli.js --explain       # print the plan only
 node lib/cli.js --files a.ps1,b.json
+node lib/cli.js --quick         # syntax/JSON checks only
+node lib/cli.js --summary       # short output for a phone chat pane
 ```
 
 **Optional dependencies** (install on demand; the matching check is skipped when absent):
@@ -127,6 +136,29 @@ The `--help` text, `--json` `text`, `--quiet` line, `--prove` output, error mess
 | `DSH_SELFTEST_GIT` | auto-detected | git executable |
 | `DSH_SELFTEST_STRICT_PLUGINS` | `1` | `0` disables "changed plugin without tests is a failure" |
 | `DSH_SELFTEST_LANG` | system locale | UI language: `zh` / `en` (also honours `LC_ALL`/`LANG`; Chinese systems default to `zh`, others to `en`) |
+| `DSH_SELFTEST_SINCE_MINUTES` | 10 (Linux 30) | mtime lookback, minutes |
+| `DSH_SELFTEST_TIMEOUT_MS` | 120000 (Linux 30000) | per-step timeout |
+| `DSH_SELFTEST_MAX_FILES` | 500 (Linux 200) | collected file cap |
+| `DSH_SELFTEST_MAX_DEPTH` | 4 (Linux 6) | mtime scan depth |
+| `DSH_SELFTEST_EVIDENCE_DIR` | `<root>/.dsh/selftest` (Linux `$DSH_HOME/cache/selftest`) | evidence directory |
+| `DSH_SELFTEST_PLUGIN_ROOTS` | empty | extra plugin roots (comma-separated absolute paths; direct children are plugins) |
+| `DSH_SELFTEST_QUICK` | `0` | `1` is the same as `--quick` |
+
+## Phones / low-power platforms
+
+On `process.platform === 'linux'` the defaults switch to a phone profile: 30-minute mtime window, depth 6, 30-second per-step timeout, 200-file cap, and evidence under `$DSH_HOME/cache/selftest` (the workspace may be read-only or a mount).
+
+- `.ps1` without a usable PowerShell → explicit skip (not a spawn failure); `--prove` marks that case inconclusive instead of counting it as verified
+- `.py` without `python`/`python3` → explicit skip
+- `npm test` is not run by default (process startup is expensive); runnable `test/*.mjs` files are still executed with node
+- the tool layer passes `--summary` automatically on Linux: verdict line, failures (max 8), skip count and evidence path
+- `selftest { quick: true }` (or `--quick`) runs syntax/JSON checks only, for "check what I just changed"
+- `.dsh`, `build`, `dist` directory names are only skipped below the root; a root that itself lives under `/root/.dsh/...` works normally
+- files passed explicitly via `--files` are never skipped
+
+## Coverage completeness (partial)
+
+When a result is incomplete the verdict is `partial` (exit code stays 0 — it does not fake failure): files were truncated by `maxFiles`, `maxDepth` cut off deeper directories, or a check was skipped for a missing tool/runner. The `coverage` field reports `{ truncated, depthLimited, skippedTools }`; `sources.truncated` / `sources.depthLimited` mirror it.
 
 **Node discovery**: the Harness host is Electron, so `process.execPath` is `DSH NEXT.exe` and is not node; feeding it `--check` always fails. Discovery order is `DSH_SELFTEST_NODE` → self is node → PATH → runtime bundled under `$DSH_HOME`.
 
@@ -167,12 +199,14 @@ Cost: in restricted environments a `.ps1` batch collapses to one line (no per-fi
 - It cannot work where `spawn` is forbidden outright (currently only pipes are restricted; inherit mode works).
 - Only plugin directories whose absolute path contains `\dev\plugins\<name>\` are scanned; plugins elsewhere do not trigger "no tests is a failure".
 - A file explicitly passed via `--files` that does not exist is judged fail (never quietly treated as "nothing to check").
+- **It executes code from the workspace**: `scripts.test` and `test/*.mjs` are spawned directly. On an untrusted repository, read the tests before running.
 
 ## Development & tests
 
 ```bash
-node test/test.mjs       # unit + end-to-end, 24 cases
+node test/test.mjs       # unit + end-to-end, 26 cases
 node test/i18n.mjs       # UI language (zh / en), 11 cases
+node test/mobile.mjs     # phone/portability regressions, 12 cases
 node test/gauntlet.mjs   # "order fried rice at a bar" group 1, 24 assertions
 node test/gauntlet2.mjs  # group 2 (git/input/output contract), 20 scenarios, 28 assertions
 node test/gauntlet3.mjs  # group 3 (--prove health check and flag combinations), 21 assertions

@@ -55,7 +55,14 @@ AGENTS.md 里的「必须测试 / 必须检查」是写给人看的规则，忘�
 
 要求 Node.js 18+。
 
-**作为 DSH 插件**：把本包放进 profile 的 `node_modules`（或从 npm 安装），在 DSH 里启用后即可使用 `selftest` 工具。
+**从 npm 安装**（推荐）：
+
+```bash
+npm i -g dsh-selftest@0.1.1     # 全局命令行
+npx dsh-selftest@0.1.1           # 或直接跑一次
+```
+
+**作为 DSH 插件**：`dsh plugin add dsh-selftest`（或把本包放进 profile 的 `node_modules`），在 DSH 里启用后即可使用 `selftest` 工具。
 
 **独立命令行**：
 
@@ -63,6 +70,8 @@ AGENTS.md 里的「必须测试 / 必须检查」是写给人看的规则，忘�
 node lib/cli.js                 # 检查当前目录的改动
 node lib/cli.js --explain       # 只列计划
 node lib/cli.js --files a.ps1,b.json
+node lib/cli.js --quick         # 只做语法/JSON，不跑测试套件
+node lib/cli.js --summary       # 手机上的短输出：结论、失败项、跳过数、证据路径
 ```
 
 **可选依赖**（按需安装，缺了对应检查会 skip）：
@@ -129,6 +138,29 @@ node lib/cli.js [root] [--explain] [--json] [--quiet] [--no-persist] [--prove]
 | `DSH_SELFTEST_GIT` | 自动探测 | git 可执行文件 |
 | `DSH_SELFTEST_STRICT_PLUGINS` | `1` | `0` 关闭「插件无测试即失败」 |
 | `DSH_SELFTEST_LANG` | 跟随系统 | 界面语言：`zh` / `en`（也认 `LC_ALL`/`LANG`；中文系统默认中文，其余英文） |
+| `DSH_SELFTEST_SINCE_MINUTES` | 10（Linux 30） | mtime 回看窗口（分钟） |
+| `DSH_SELFTEST_TIMEOUT_MS` | 120000（Linux 30000） | 单步超时 |
+| `DSH_SELFTEST_MAX_FILES` | 500（Linux 200） | 收集文件上限 |
+| `DSH_SELFTEST_MAX_DEPTH` | 4（Linux 6） | mtime 扫描深度 |
+| `DSH_SELFTEST_EVIDENCE_DIR` | `<root>/.dsh/selftest`（Linux `$DSH_HOME/cache/selftest`） | 证据目录 |
+| `DSH_SELFTEST_PLUGIN_ROOTS` | 空 | 额外插件根（逗号分隔绝对路径，其直接子目录视为插件） |
+| `DSH_SELFTEST_QUICK` | `0` | `1` 等价 `--quick` |
+
+## 手机 / 低功耗平台
+
+`process.platform === 'linux'` 时自动切到手机档默认值：mtime 窗口 30 分钟、扫描深度 6、单步超时 30 秒、文件上限 200、证据写到 `$DSH_HOME/cache/selftest`（workspace 可能只读或挂载）。
+
+- `.ps1` 没有可用 PowerShell → 显式 skip（不是 spawn 失败）；`--prove` 把这一项标成 inconclusive，不计入「已证实」
+- `.py` 没有 `python`/`python3` → 显式 skip
+- 默认不跑 `npm test`（进程启动太贵）；有 `test/*.mjs` 就直接用 node 跑
+- 工具层在 Linux 上自动传 `--summary`：只给结论行、失败项（最多 8 条）、跳过数和证据路径
+- `selftest { quick: true }`（或 `--quick`）只做语法/JSON，不跑测试套件，适合「改完马上查」
+- `.dsh`、`build`、`dist` 这类目录名只在 root **以下**才跳过；root 本身在 `/root/.dsh/...` 下照常工作
+- `--files` 显式指定的文件永不跳过
+
+## 覆盖完整性（partial）
+
+结果不完整时 verdict 为 `partial`（退出码仍 0，不冒充失败）：文件被 `maxFiles` 截断、`maxDepth` 有更深目录未扫描、或有检查项因缺工具/缺 runner 被 skip。`coverage` 字段给出 `{ truncated, depthLimited, skippedTools }`，`sources.truncated` / `sources.depthLimited` 同步记录。
 
 **node 探测**：Harness 宿主是 Electron，`process.execPath` 是 `DSH NEXT.exe` 而不是 node，
 喂它 `--check` 必然失败。所以按 `DSH_SELFTEST_NODE` → 自身是 node → PATH → `$DSH_HOME` 自带运行时 的顺序探测。
@@ -172,12 +204,14 @@ node lib/cli.js [root] [--explain] [--json] [--quiet] [--no-persist] [--prove]
 - 沙箱里 `spawn` 被彻底禁止时无法工作（当前实测仅管道受限，继承模式可用）。
 - 只扫绝对路径含 `\dev\plugins\<name>\` 的插件目录，其它位置的插件不会触发「无测试即失败」。
 - 显式用 `--files` 指定、但实际不存在的文件会判 fail（不会悄悄当成“没有可查的”）。
+- **会执行工作区里的代码**：`scripts.test`、`test/*.mjs` 都是直接 spawn 的。不可信仓库上先看测试内容再跑。
 
 ## 开发与测试
 
 ```bash
-node test/test.mjs       # 单元 + 端到端，24 个用例
+node test/test.mjs       # 单元 + 端到端，26 个用例
 node test/i18n.mjs       # 界面语言（zh / en），11 个用例
+node test/mobile.mjs     # 手机/可移植性回归（.dsh root、git 子目录、缺工具、深度、quick），12 个用例
 node test/gauntlet.mjs   # 「去酒吧点蛋炒饭」第一组，24 条断言
 node test/gauntlet2.mjs  # 第二组（git/输入/输出契约），20 组场景、28 条断言
 node test/gauntlet3.mjs  # 第三组（--prove 体检与参数组合），21 条断言
@@ -193,7 +227,7 @@ node test/gauntlet3.mjs  # 第三组（--prove 体检与参数组合），21 条
 第三组专打 `--prove`：体检结果必须真红真绿（不是嘴上说）、不写证据、不弄脏 git 工作区、临时目录清理干净、
 幂等、缺 root/带 `--files`/带 `--plan` 时行为明确。
 
-24 个用例：prove 体检、git 输出解析、按扩展名分组、测试发现（test 文件优先于 scripts.test）、插件策略、报告落盘与清理、
+26 个用例：prove 体检、git 输出解析、按扩展名分组、测试发现（test 文件优先于 scripts.test）、插件策略、报告落盘与清理、
 `.ps1` 真实解析（无 pwsh 时跳过）、端到端 pass / fail / plan / 无改动、缺失文件 fail、工具注册形状。
 
 夹具全部建在系统临时目录，不会拿真实工作区糊弄自己。

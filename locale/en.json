@@ -37,7 +37,7 @@
     "unknownOption": "unknown option: {arg}",
     "needsValue": "{flag} needs a value",
     "sinceNeedsNumber": "--since needs a number of minutes",
-    "proveTitle": "selftest checker health check: {passed}/{total} passed",
+    "proveTitle": "selftest checker health check: verified {verified}/{total} passed",
     "proveLine": "  {mark} {id}: {what} — expected {expected}, actual {actual}{extra}",
     "proveExtra": " ({detail})",
     "provePs1Skipped": "No usable PowerShell on this machine; skipped",
@@ -55,6 +55,15 @@
     "cliBadJson": "selftest CLI output is not JSON (exit {code}): {text}",
     "noRenderableResult": "(selftest produced no displayable result)",
     "tempFileFailed": "Could not create a temp file: the sandbox denied every candidate directory (%TEMP% / cwd / step dir)",
-    "usage": "dsh-selftest - check every changed file with the tool that fits it\n\nUsage:\n  node lib/cli.js [root] [options]\n\nOptions:\n  --root <dir>            Working directory (default: cwd)\n  --since <minutes>       mtime lookback (default: 10)\n  --files <a,b,...>       Check exactly these files instead of collecting\n  --timeout <ms>          Per-command timeout (default: 120000)\n  --explain, --plan       Print the plan; run nothing\n  --prove                 Health-check the checkers themselves with known-bad samples\n  --json                  Print the full JSON result\n  --quiet, -q             One-line verdict on success, full detail on failure\n  --verbose, -v           Include command output for passing checks too\n  --no-persist            Do not write .dsh/selftest/ (read-only or sandboxed callers)\n  --strict-plugins        Changed plugin with no test is a failure (default)\n  --no-strict-plugins     Downgrade that rule to a note\n  -h, --help              This text\n"
+    "usage": "dsh-selftest - check every changed file with the tool that fits it\n\nUsage:\n  node lib/cli.js [root] [options]\n\nOptions:\n  --root <dir>            Working directory (default: cwd)\n  --since <minutes>       mtime lookback (default: 10)\n  --files <a,b,...>       Check exactly these files instead of collecting\n  --timeout <ms>          Per-command timeout (default: 120000)\n  --explain, --plan       Print the plan; run nothing\n  --prove                 Health-check the checkers themselves with known-bad samples\n  --json                  Print the full JSON result\n  --quiet, -q             One-line verdict on success, full detail on failure\n  --verbose, -v           Include command output for passing checks too\n  --no-persist            Do not write .dsh/selftest/ (read-only or sandboxed callers)\n  --strict-plugins        Changed plugin with no test is a failure (default)\n  --no-strict-plugins     Downgrade that rule to a note\n  --summary               Short output: verdict, failures, skip count, evidence path\n  --quick                 Syntax/JSON checks only; skip test suites\n  -h, --help              This text\n",
+    "ps1Unavailable": "No usable PowerShell on this machine; .ps1 checks are skipped",
+    "pyUnavailable": "No usable Python on this machine; .py checks are skipped",
+    "pyTitle": "Python checks ({n} files)",
+    "tsTestNeedsRunner": "TypeScript test found, but no TypeScript runner is bundled; skipped",
+    "npmSkippedMobile": "npm test is skipped on this platform; run it on desktop or CI",
+    "depthLimited": "\n⚠️ Directory depth limit reached; deeper files were not scanned",
+    "moreFailures": "… {n} more failure(s); see the evidence file",
+    "skipSummary": "{n} item(s) skipped",
+    "proveTitleWithInconclusive": "selftest checker health check: verified {verified}/{total} (inconclusive {inconclusive})"
   }
 }

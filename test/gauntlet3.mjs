@@ -61,7 +61,7 @@ function proveDirs() {
   const r = runCli(['--prove'])
   const j = r.json
   check('4. JSON 可解析且 ok=true', j !== null && j.ok === true, `ok=${j?.ok}`)
-  check('5. total>=9 且 passed=total', (j?.total ?? 0) >= 9 && j?.passed === j?.total, `total=${j?.total} passed=${j?.passed}`)
+  check('5. total>=9 且 verified+inconclusive=total', (j?.total ?? 0) >= 9 && (j?.verified ?? 0) + (j?.inconclusive ?? 0) === j?.total, `total=${j?.total} verified=${j?.verified} inconclusive=${j?.inconclusive}`)
   const cases = Array.isArray(j?.cases) ? j.cases : []
   check('5b. 每个 case 字段齐全', cases.every(c => c && typeof c.id === 'string' && typeof c.what === 'string'
     && typeof c.expected === 'string' && typeof c.actual === 'string' && typeof c.ok === 'boolean'),
@@ -191,7 +191,13 @@ function proveDirs() {
   const cases = r.json?.cases ?? []
   const skipped = cases.filter(c => c.actual === 'skip')
   console.log(`    观测：跳过项=${skipped.map(c => c.id).join(',') || '无'}`)
-  check('20. 本机有 pwsh，体检不应出现 skip 项', skipped.length === 0, skipped.map(c => c.id).join(','))
+  const ps1 = cases.find(c => c.id === 'ps1-encoding')
+  if (ps1 && ps1.actual === 'skip') {
+    console.log('  skip：本机无 pwsh，体检出现 skip 项是预期行为')
+    check('20b. 无 pwsh 时 prove 仍 ok（inconclusive 而非失败）', r.json?.ok === true, `ok=${r.json?.ok}`)
+  } else {
+    check('20. 本机有 pwsh，体检不应出现 skip 项', skipped.length === 0, skipped.map(c => c.id).join(','))
+  }
 }
 
 console.log('')

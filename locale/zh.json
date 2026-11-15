@@ -37,7 +37,7 @@
     "unknownOption": "无法识别的选项：{arg}",
     "needsValue": "{flag} 需要一个值",
     "sinceNeedsNumber": "--since 需要一个分钟数",
-    "proveTitle": "selftest 检查器体检：{passed}/{total} 通过",
+    "proveTitle": "selftest 检查器体检：verified {verified}/{total} 通过",
     "proveLine": "  {mark} {id}：{what} — 期望 {expected}，实际 {actual}{extra}",
     "proveExtra": "（{detail}）",
     "provePs1Skipped": "本机没有可用的 PowerShell，跳过",
@@ -55,6 +55,15 @@
     "cliBadJson": "selftest CLI 输出不是 JSON（exit {code}）: {text}",
     "noRenderableResult": "（selftest 没有产生可显示的结果）",
     "tempFileFailed": "无法创建临时文件：沙箱拒绝了所有候选目录（%TEMP% / cwd / 步骤目录）",
-    "usage": "dsh-selftest - 按改动文件自动选择检查器，全部通过才放行\n\n用法：\n  node lib/cli.js [root] [选项]\n\n选项：\n  --root <dir>            工作目录（默认：当前目录）\n  --since <minutes>       按修改时间回看的分钟数（默认：10）\n  --files <a,b,...>       只检查这些文件，不自动收集\n  --timeout <ms>          每条命令的超时（默认：120000）\n  --explain, --plan       只打印计划，不执行\n  --prove                 用已知坏样本体检检查器本身\n  --json                  输出完整 JSON 结果\n  --quiet, -q             成功时只输出一行结论，失败时输出完整详情\n  --verbose, -v           通过项也附带命令输出\n  --no-persist            不写 .dsh/selftest/（只读或沙箱环境）\n  --strict-plugins        改动的插件没有测试就算失败（默认）\n  --no-strict-plugins     把这条规则降级为提示\n  -h, --help              显示本帮助\n"
+    "usage": "dsh-selftest - 按改动文件自动选择检查器，全部通过才放行\n\n用法：\n  node lib/cli.js [root] [选项]\n\n选项：\n  --root <dir>            工作目录（默认：当前目录）\n  --since <minutes>       按修改时间回看的分钟数（默认：10）\n  --files <a,b,...>       只检查这些文件，不自动收集\n  --timeout <ms>          每条命令的超时（默认：120000）\n  --explain, --plan       只打印计划，不执行\n  --prove                 用已知坏样本体检检查器本身\n  --json                  输出完整 JSON 结果\n  --quiet, -q             成功时只输出一行结论，失败时输出完整详情\n  --verbose, -v           通过项也附带命令输出\n  --no-persist            不写 .dsh/selftest/（只读或沙箱环境）\n  --strict-plugins        改动的插件没有测试就算失败（默认）\n  --no-strict-plugins     把这条规则降级为提示\n  --summary               简短输出：结论、失败项、跳过数、证据路径\n  --quick                 只做语法/JSON 检查，不跑测试套件\n  -h, --help              显示本帮助\n",
+    "ps1Unavailable": "本机没有可用的 PowerShell，跳过 .ps1 检查",
+    "pyUnavailable": "本机没有可用的 Python，跳过 .py 检查",
+    "pyTitle": "Python 检查（{n} 个文件）",
+    "tsTestNeedsRunner": "发现 TypeScript 测试，但没有内置 TypeScript runner，跳过",
+    "npmSkippedMobile": "本平台跳过 npm test，请到桌面或 CI 运行",
+    "depthLimited": "\n⚠️ 目录深度达到上限，更深的文件未扫描",
+    "moreFailures": "…… 另有 {n} 条失败，见证据文件",
+    "skipSummary": "另有 {n} 项被跳过",
+    "proveTitleWithInconclusive": "selftest 检查器体检：verified {verified}/{total}（inconclusive {inconclusive}）"
   }
 }

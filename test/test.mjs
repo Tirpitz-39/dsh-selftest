@@ -238,6 +238,7 @@ await test('deriveTestSteps prefers runnable test files over npm test', () => {
 await test('pluginPolicySteps fails a changed plugin that ships no tests', () => {
   const fixture = makeFixture({
     'dev/plugins/no-tests-here/lib/index.js': 'export const a = 1\n',
+    'dev/plugins/no-tests-here/cordis.patch.yml': '- insert: []\n',
   })
   try {
     const steps = pluginPolicySteps([
@@ -369,7 +370,7 @@ await test('an explicitly requested missing file fails instead of being ignored'
 await test('proveSelf turns each checker red on a known-bad sample and green on a clean one', async () => {
   const result = await proveSelf()
   assert.ok(result.total >= 8, `expected at least 8 prove cases, got ${result.total}`)
-  assert.equal(result.passed, result.total, JSON.stringify(result.cases.filter(c => !c.ok)))
+  assert.equal(result.verified + result.inconclusive, result.total, JSON.stringify(result.cases.filter(c => !c.ok)))
   assert.ok(result.cases.some(c => c.id === 'broken-js' && c.actual === 'fail'))
   assert.ok(result.cases.some(c => c.id === 'clean-code' && c.actual === 'pass'))
   assert.ok(result.cases.some(c => c.id === 'missing-file' && c.actual === 'fail'))
