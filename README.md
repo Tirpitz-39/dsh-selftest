@@ -1,5 +1,9 @@
 # dsh-selftest
 
+[![CI](https://github.com/Tirpitz-39/dsh-selftest/actions/workflows/ci.yml/badge.svg)](https://github.com/Tirpitz-39/dsh-selftest/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D18-339933.svg)](package.json)
+
 按「本次改了什么」自动推导检查，而不是靠模型记得要检查。
 
 注册一个 `selftest` 工具，同时提供一个命令行入口；两者跑的是同一套逻辑。
