@@ -6,6 +6,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D18-339933.svg)](package.json)
 
+[中文](README.md) | [English](README.en.md)
+
 按「本次改了什么」自动推导检查，而不是靠模型记得要检查。
 
 注册一个 `selftest` 工具，同时提供一个命令行入口；两者跑的是同一套逻辑。
@@ -100,6 +102,16 @@ node lib/cli.js [root] [--explain] [--json] [--quiet] [--no-persist] [--prove]
 ```json
 { "id": "selftest", "kind": "command", "title": "selftest 通过：…", "command": "<node> …cli.js --root … --no-persist --quiet" }
 ```
+
+## 语言
+
+界面文本支持中文与英文。解析顺序：
+
+1. `DSH_SELFTEST_LANG`（`zh` / `en`）
+2. `LC_ALL` / `LC_MESSAGES` / `LANG` / `LANGUAGE`
+3. 系统 locale（`Intl`；中文系统默认中文，其余英文）
+
+`--help`、`--json` 的 text、`--quiet` 行、`--prove` 输出、错误消息、`claimChecks` 标题都跟随所选语言。
 
 ## 证据
 
