@@ -1,0 +1,168 @@
+# dsh-selftest
+
+按「本次改了什么」自动推导检查，而不是靠模型记得要检查。
+
+注册一个 `selftest` 工具，同时提供一个命令行入口；两者跑的是同一套逻辑。
+
+## 它解决什么
+
+AGENTS.md 里的「必须测试 / 必须检查」是写给人看的规则，忘了或糊弄了不会有任何反馈。
+这个插件把它变成代码：
+
+- 收集改动：`git status --porcelain`（含未跟踪文件）∪ 最近 N 分钟 mtime 变化（非 git 目录也能用）
+- 按扩展名推导检查器，**不认识的扩展名记为 skip，绝不静默通过**
+- 往上找 3 级，找到改动文件所属插件 / 项目的测试并跑一次
+- 改动插件源码但该插件没有任何测试 → 直接 FAIL
+
+## 和类似工具的区别
+
+很多工具都做「按改动跑检查」，但触发时机和判定规则完全不同：
+
+| 工具 | 触发时机 | 输入 | 覆盖 | 与 selftest 的关键差异 |
+|---|---|---|---|---|
+| [lint-staged](https://github.com/okonet/lint-staged) | `git commit` | 暂存区文件 | 配置好的 linter / formatter | 不跑测试；没有配置的类型会跳过；必须挂 git |
+| [pre-commit](https://github.com/pre-commit/pre-commit) | `git commit` | 暂存区文件 | 任意 hook | hook 框架，不推导「该查什么」 |
+| [lefthook](https://github.com/evilmartians/lefthook) | git hooks | 按 glob | 快速 hook 编排 | 调度器，不含检查推导 |
+| [nx affected](https://github.com/nrwl/nx) | CI / 本地 | 项目图 | 构建 + 测试 | 需要项目接入 nx，重 |
+| [danger-js](https://github.com/danger/danger-js) | PR / CI | 变更文件 | 自定义规则 | 在 CI 环节，不是本地即时 |
+| **dsh-selftest** | **任意时刻（工具 / 命令行调用）** | git status + mtime | 语法 + 所属测试 + 无测试即失败 | 不依赖 git hook；不认识的扩展名直接 FAIL；面向 AI agent 会话 |
+
+简言之：它是给「AI 改完代码马上自检」用的，不是提交钩子，也不是 CI 系统。
+
+## 检查矩阵
+
+| 改动 | 检查 | 判定 |
+|---|---|---|
+| `.ps1` `.psm1` `.psd1` | PowerShell 解析器 + Windows PowerShell 5.1 编码规则（非 ASCII 无 BOM 视为缺陷） | 解析错误或编码缺陷即 fail |
+| `.js` `.mjs` `.cjs` | `<node> --check` | 非 0 退出即 fail |
+| `.json` | `JSON.parse`（容忍 BOM） | 解析失败即 fail |
+| `.ts` `.tsx` | `tsc --noEmit`，仅在配置了 `tsc` 时启用 | 未配置则 skip |
+| `.py` | `ruff check`，未配置则 `python -m py_compile` | 非 0 退出即 fail |
+| 其它 | — | skip，附原因 |
+| 所属测试 | `<dir>/test/*.mjs`（优先 `test.*` / `*.test.*` / `*.spec.*`），或 `package.json` 的 `scripts.test` | 非 0 退出即 fail |
+
+测试发现向上最多 3 级：改 `plugins/dsh-guard/lib/index.js` 会找到 `plugins/dsh-guard/test/test.mjs` 并运行它。
+
+## 安装
+
+要求 Node.js 18+。
+
+**作为 DSH 插件**：把本包放进 profile 的 `node_modules`（或从 npm 安装），在 DSH 里启用后即可使用 `selftest` 工具。
+
+**独立命令行**：
+
+```bash
+node lib/cli.js                 # 检查当前目录的改动
+node lib/cli.js --explain       # 只列计划
+node lib/cli.js --files a.ps1,b.json
+```
+
+**可选依赖**（按需安装，缺了对应检查会 skip）：
+
+- PowerShell 7（解析 `.ps1`）：`winget install Microsoft.PowerShell`
+- git（收集改动）：通常已有
+- `tsc` / `ruff`：想启用 `.ts` / `.py` 检查时再装
+
+所有外部程序都是**探测**出来的：环境变量 → PATH → 常见安装位置（含 `$DSH_HOME` 下的 DSH 自带运行时），不写死路径。
+
+## 用法
+
+工具：
+
+```
+selftest                          # 检查当前会话工作区的改动
+selftest { action: "plan" }       # 只列计划，不执行
+selftest { root: "/path/to/tools", since: 60 }
+selftest { files: ["a.ps1"] }     # 只查指定文件
+```
+
+命令行：
+
+```
+node lib/cli.js [root] [--explain] [--json] [--quiet] [--no-persist]
+```
+
+退出码：`0` 通过 / 无改动 / `--explain`；`1` 有失败；`2` 参数错误。
+
+工具返回里带一条 `claimChecks`，可直接原样传给 `claim_plan`：
+
+```json
+{ "id": "selftest", "kind": "command", "title": "selftest 通过：…", "command": "<node> …cli.js --root … --no-persist --quiet" }
+```
+
+## 证据
+
+`<root>/.dsh/selftest/latest.json` 与 `runs/<id>.json`，保留最近 50 份（`keepRuns`）。
+
+## 配置（环境变量，都有默认值）
+
+| 变量 | 默认 | 说明 |
+|---|---|---|
+| `DSH_SELFTEST_NODE` | 自动探测 | 语法检查与测试用的 node |
+| `DSH_SELFTEST_PWSH` | 自动探测 | 解析 `.ps1` 的 PowerShell（Windows 上 `pwsh` → `powershell`） |
+| `DSH_SELFTEST_PARSE_PS1` | 包内 `lib/parse-ps1.ps1` | 批量解析脚本（已随包发布，无需外部文件） |
+| `DSH_SELFTEST_TSC` | 空 | 配置后启用 TypeScript 检查 |
+| `DSH_SELFTEST_RUFF` | 空 | 配置后启用 ruff，否则 `py_compile` |
+| `DSH_SELFTEST_GIT` | 自动探测 | git 可执行文件 |
+| `DSH_SELFTEST_STRICT_PLUGINS` | `1` | `0` 关闭「插件无测试即失败」 |
+
+**node 探测**：Harness 宿主是 Electron，`process.execPath` 是 `DSH NEXT.exe` 而不是 node，
+喂它 `--check` 必然失败。所以按 `DSH_SELFTEST_NODE` → 自身是 node → PATH → `$DSH_HOME` 自带运行时 的顺序探测。
+
+## 工具层是薄壳
+
+`selftest` 工具本身不执行任何检查逻辑：它把参数翻译成 CLI 参数，用**真正的 node** 起一个
+`lib/cli.js --json` 子进程，再把 JSON 交回模型。
+
+两个原因：
+
+1. Harness 宿主是 Electron，`process.execPath` 是 `DSH NEXT.exe` 而不是 node，工具层必须自己探测可用的 node；
+2. Harness 静态加载插件模块，**改 `lib/` 下的逻辑不会热更新**。把逻辑放进子进程后，改代码在下一次调用就生效，不必重启 Harness。
+
+只有改 `lib/index.js` 本身（参数映射、工具描述）才需要重启一次。
+
+### 结果必须是无损 JSON
+
+工具返回值里不能出现 `undefined` 或 `NaN`：它们经过 `JSON.stringify` 会丢失，Harness 会拒绝整次调用并报
+`value is not lossless JSON`。`lib/core.js` 的 `toLossless()` 在出口统一把 `undefined` 转成 `null`、把非有限数转成 `null`。
+
+## 受限沙箱下的降级
+
+`claim_verify` 执行的命令运行在沙箱里，**无法创建命名管道**（`spawn EPERM`），也可能不允许写工作区之外的路径。
+
+处理方式：
+
+- 管道 spawn 失败 → 自动改用 `stdio: 'inherit'` 重试，子进程输出直接转出，**退出码照常决定通过/失败**
+- 临时文件（`.ps1` 批量列表）按 `%TEMP%` → cwd → 步骤目录 顺序回退
+- `--no-persist` 让 claim 场景不写证据文件
+
+因此 `lib/parse-ps1.ps1` 除了输出 JSON，还会在有坏文件时 `exit 1`——即使 stdout 捕获不到，结论也不会丢。
+
+代价：受限环境里 `.ps1` 批次会塌缩成一行（拿不到逐文件明细），但 verdict 仍正确。
+
+## 已知边界
+
+- **验证不了用户侧现象**。语法对 ≠ 行为对，改完界面/命令仍然要自己跑一次。
+- 文件收集靠 git + mtime，改了但既没提交也没在 N 分钟内改过的文件不会被发现。
+- 测试发现只认约定目录，不解析代码里的测试标记。
+- 沙箱里 `spawn` 被彻底禁止时无法工作（当前实测仅管道受限，继承模式可用）。
+- 只扫绝对路径含 `\dev\plugins\<name>\` 的插件目录，其它位置的插件不会触发「无测试即失败」。
+
+## 开发与测试
+
+```bash
+node test/test.mjs
+```
+
+21 个用例：git 输出解析、按扩展名分组、测试发现（test 文件优先于 scripts.test）、插件策略、报告落盘与清理、
+`.ps1` 真实解析（无 pwsh 时跳过）、端到端 pass / fail / plan / 无改动、工具注册形状。
+
+夹具全部建在系统临时目录，不会拿真实工作区糊弄自己。
+
+## 作者
+
+大肥鱼（DSH 里的鲸鱼娘）· 在 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 上开发。
+
+## License
+
+MIT

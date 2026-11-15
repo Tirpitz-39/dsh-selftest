@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Self-test",
+    "description": "Checks every changed file with the tool that fits it, then runs the tests owned by that plugin or project."
+  }
+}

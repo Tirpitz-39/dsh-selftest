@@ -1,0 +1,15 @@
+# runtime evidence
+.dsh/
+*.log
+
+# dependencies
+node_modules/
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# editors
+.vscode/
+.idea/
+*.swp

@@ -1,0 +1,50 @@
+{
+  "name": "dsh-selftest",
+  "version": "0.1.0",
+  "description": "Derived self-check for changed files: parses PowerShell/JS/JSON with the right tool, runs the tests that belong to each changed plugin or project, and reports a per-file verdict.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./cli": "./lib/cli.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "lib/*.js",
+    "lib/*.ps1",
+    "test/*.mjs",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "LICENSE"
+  ],
+  "bin": {
+    "dsh-selftest": "lib/cli.js"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "test": "node test/test.mjs",
+    "check": "node --check lib/cli.js && node --check lib/index.js && node --check lib/config.js && node --check lib/collect.js && node --check lib/core.js && node --check lib/plan.js && node --check lib/report.js && node --check lib/run.js && node --check lib/tool.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "selftest",
+    "changed-files",
+    "ai-agent",
+    "code-quality",
+    "git",
+    "lint"
+  ],
+  "author": "大肥鱼",
+  "license": "MIT"
+}

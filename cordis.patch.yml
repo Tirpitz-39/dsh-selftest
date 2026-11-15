@@ -1,0 +1,7 @@
+# dsh-selftest - derived self-check for changed files.
+# Loaded as a profile bundle; the check logic lives in lib/*.js and is also
+# reachable from the command line through lib/cli.js.
+
+- insert:
+    - id: dsh-selftest
+      name: dsh-selftest
