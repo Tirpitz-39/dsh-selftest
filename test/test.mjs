@@ -348,6 +348,20 @@ await test('runSelftest only runs the tests that own the changed file', async ()
   } finally { fixture.cleanup() }
 })
 
+await test('an explicitly requested missing file fails instead of being ignored', async () => {
+  const fixture = makeFixture({ 'a.js': 'export const ok = 1\n' })
+  try {
+    const result = await runSelftest({
+      root: fixture.dir,
+      files: [join(fixture.dir, 'ghost.js')],
+      persist: false,
+    })
+    assert.equal(result.verdict, 'fail')
+    assert.ok(result.missing.some(path => path.endsWith('ghost.js')))
+    assert.ok(result.results.some(row => row.status === 'fail'))
+  } finally { fixture.cleanup() }
+})
+
 await test('plan mode records steps without executing them', async () => {
   const fixture = makeFixture({ 'broken.mjs': 'export const value = ;\n' })
   try {
