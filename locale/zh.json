@@ -7,6 +7,8 @@
     "none": "(无)",
     "planTitle": "📋 selftest 计划：{files} 个改动文件，{steps} 个步骤",
     "ps1Title": "PowerShell 语法 + 编码（{n} 个文件）",
+    "jsTitle": "JavaScript 语法 + import（{n} 个文件）",
+    "tscProjectTitle": "TypeScript 类型检查（tsconfig 项目）",
     "tsNoCompiler": "没有配置 TypeScript 编译器（cfg.tsc 为空）",
     "unknownExt": "不认识的扩展名 {ext}",
     "npmMissing": "package.json 有 scripts.test，但 PATH 上找不到 npm：装 npm，或把测试放到 test/ 目录用 node 直接跑",

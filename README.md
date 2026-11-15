@@ -42,9 +42,9 @@ AGENTS.md 里的「必须测试 / 必须检查」是写给人看的规则，忘�
 | 改动 | 检查 | 判定 |
 |---|---|---|
 | `.ps1` `.psm1` `.psd1` | PowerShell 解析器 + Windows PowerShell 5.1 编码规则（非 ASCII 无 BOM 视为缺陷） | 解析错误或编码缺陷即 fail |
-| `.js` `.mjs` `.cjs` | `<node> --check` | 非 0 退出即 fail |
+| `.js` `.mjs` `.cjs` | 批量子进程：`vm.Script`/`vm.SourceTextModule` 语法检查 + 相对 import 解析 | 语法错误或相对 import 无法解析即 fail |
 | `.json` | `JSON.parse`（容忍 BOM） | 解析失败即 fail |
-| `.ts` `.tsx` | `tsc --noEmit`，仅在配置了 `tsc` 时启用 | 未配置则 skip |
+| `.ts` `.tsx` | 有 `tsconfig.json` 时 `tsc -p <tsconfig> --noEmit`，否则逐文件 `tsc --noEmit`；仅在配置了 `tsc` 时启用 | 未配置则 skip |
 | `.py` | `ruff check`，未配置则 `python -m py_compile` | 非 0 退出即 fail |
 | 其它 | — | skip，附原因 |
 | 所属测试 | `<dir>/test/*.mjs`（优先 `test.*` / `*.test.*` / `*.spec.*`），或 `package.json` 的 `scripts.test` | 非 0 退出即 fail |
@@ -111,6 +111,8 @@ node lib/cli.js [root] [--explain] [--json] [--quiet] [--no-persist] [--prove]
 ```json
 { "id": "selftest", "kind": "command", "title": "selftest 通过：…", "command": "<node> …cli.js --root … --no-persist --quiet" }
 ```
+
+> `claimChecks` 依赖 DSH 的 claimcheck 插件提供 `claim_plan` / `claim_verify`；没有该插件的 Harness（例如手机端 DSH Go）可忽略这一项，直接看退出码。
 
 ## 语言
 
@@ -205,11 +207,12 @@ node lib/cli.js [root] [--explain] [--json] [--quiet] [--no-persist] [--prove]
 - 只扫绝对路径含 `\dev\plugins\<name>\` 的插件目录，其它位置的插件不会触发「无测试即失败」。
 - 显式用 `--files` 指定、但实际不存在的文件会判 fail（不会悄悄当成“没有可查的”）。
 - **会执行工作区里的代码**：`scripts.test`、`test/*.mjs` 都是直接 spawn 的。不可信仓库上先看测试内容再跑。
+- 不内置 YAML 解析器：`.yml`/`.yaml` 仍记 skip，改坏的 `cordis.patch.yml` 不会被发现。需要时接外部校验器。
 
 ## 开发与测试
 
 ```bash
-node test/test.mjs       # 单元 + 端到端，26 个用例
+node test/test.mjs       # 单元 + 端到端，27 个用例
 node test/i18n.mjs       # 界面语言（zh / en），11 个用例
 node test/mobile.mjs     # 手机/可移植性回归（.dsh root、git 子目录、缺工具、深度、quick），12 个用例
 node test/gauntlet.mjs   # 「去酒吧点蛋炒饭」第一组，24 条断言
@@ -227,7 +230,7 @@ node test/gauntlet3.mjs  # 第三组（--prove 体检与参数组合），21 条
 第三组专打 `--prove`：体检结果必须真红真绿（不是嘴上说）、不写证据、不弄脏 git 工作区、临时目录清理干净、
 幂等、缺 root/带 `--files`/带 `--plan` 时行为明确。
 
-26 个用例：prove 体检、git 输出解析、按扩展名分组、测试发现（test 文件优先于 scripts.test）、插件策略、报告落盘与清理、
+27 个用例：prove 体检、git 输出解析、按扩展名分组、测试发现（test 文件优先于 scripts.test）、插件策略、报告落盘与清理、
 `.ps1` 真实解析（无 pwsh 时跳过）、端到端 pass / fail / plan / 无改动、缺失文件 fail、工具注册形状。
 
 夹具全部建在系统临时目录，不会拿真实工作区糊弄自己。

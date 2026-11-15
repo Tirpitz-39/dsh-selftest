@@ -1,6 +1,6 @@
 {
   "name": "dsh-selftest",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Derived self-check for changed files: parses PowerShell/JS/JSON with the right tool, runs the tests that belong to each changed plugin or project, and reports a per-file verdict.",
   "type": "module",
   "main": "lib/index.js",
@@ -12,6 +12,7 @@
   },
   "files": [
     "lib/*.js",
+    "lib/*.mjs",
     "lib/*.ps1",
     "test/*.mjs",
     "cordis.patch.yml",

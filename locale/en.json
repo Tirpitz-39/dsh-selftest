@@ -7,6 +7,8 @@
     "none": "(none)",
     "planTitle": "📋 selftest plan: {files} changed files, {steps} steps",
     "ps1Title": "PowerShell syntax + encoding ({n} files)",
+    "jsTitle": "JavaScript syntax + imports ({n} files)",
+    "tscProjectTitle": "TypeScript check (tsconfig project)",
     "tsNoCompiler": "No TypeScript compiler configured (cfg.tsc is empty)",
     "unknownExt": "Unknown extension {ext}",
     "npmMissing": "package.json has scripts.test but npm is not on PATH: install npm, or put tests under test/ so node can run them directly",

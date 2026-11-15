@@ -12,7 +12,7 @@
 import assert from 'node:assert/strict'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { collectChanges, parsePorcelain, unquote } from '../lib/collect.js'
@@ -485,7 +485,7 @@ await test('jsModuleKind keeps module resolution deterministic across Node versi
   } finally { fixture.cleanup() }
 })
 
-await test('buildPlan checks bare ESM .js through an .mjs copy (Node 20/22 --check bug)', () => {
+await test('buildPlan batches JS files with their module kind', () => {
   const fixture = makeFixture({ 'broken.js': 'export const = 1\n', 'ok.json': '{}\n' })
   try {
     const files = [
@@ -495,12 +495,43 @@ await test('buildPlan checks bare ESM .js through an .mjs copy (Node 20/22 --che
     const plan = buildPlan({
       root: fixture.dir,
       files,
-      cfg: { node: NODE, pwsh: PWSH, parsePs1: PARSE_PS1, ts: '', tsc: '', ruff: '', python: '', strictPlugins: false },
+      cfg: {
+        node: NODE, pwsh: PWSH, parsePs1: PARSE_PS1,
+        parseJs: join(PACKAGE_DIR, 'lib', 'parse-js.mjs'),
+        ts: '', tsc: '', ruff: '', python: '', strictPlugins: false,
+      },
     })
-    const jsStep = plan.steps.find(step => step.id.startsWith('js:'))
-    assert.ok(jsStep, 'js step exists')
-    assert.equal(jsStep.esmCopy, join(fixture.dir, 'broken.js'))
-    assert.deepEqual(jsStep.args, ['--check', '{{ESM_COPY}}'])
+    const batch = plan.steps.find(step => step.id === 'js:batch')
+    assert.ok(batch, 'one batch step for JS files')
+    assert.equal(batch.listFiles.length, 1)
+    assert.equal(batch.listFiles[0].kind, 'esm')
+    assert.ok(batch.args.includes('--experimental-vm-modules'))
+  } finally { fixture.cleanup() }
+})
+
+await test('JS batch flags broken syntax and unresolved relative imports', async () => {
+  const fixture = makeFixture({
+    'good.mjs': 'export const a = 1\n',
+    'bad.mjs': 'export const b = ;\n',
+    'missing-import.mjs': "import './nope.js'\nexport const c = 1\n",
+    'ok-import.mjs': "import './good.mjs'\nexport const d = 1\n",
+  })
+  try {
+    const result = await runSelftest({ root: fixture.dir, persist: false })
+    assert.equal(result.verdict, 'fail')
+    const byFile = Object.fromEntries(result.results.map(item => [basename(String(item.file ?? '')), item.status]))
+    // In a confined sandbox the child's stdout cannot be captured and the batch
+    // collapses to one failing row (same degradation as the .ps1 batch); the
+    // verdict must still be fail, and per-file detail is asserted when all rows
+    // are present.
+    const perFile = ['bad.mjs', 'missing-import.mjs', 'good.mjs', 'ok-import.mjs']
+    if (perFile.every(name => byFile[name] !== undefined)) {
+      assert.equal(byFile['bad.mjs'], 'fail')
+      assert.equal(byFile['missing-import.mjs'], 'fail')
+      assert.equal(byFile['good.mjs'], 'pass')
+      assert.equal(byFile['ok-import.mjs'], 'pass')
+    }
+    assert.ok(result.results.some(item => item.status === 'fail'))
   } finally { fixture.cleanup() }
 })
 

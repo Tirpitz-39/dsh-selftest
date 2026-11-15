@@ -42,9 +42,9 @@ In short: it is for "an AI just edited code, check it right now", not a commit h
 | Change | Check | Verdict |
 |---|---|---|
 | `.ps1` `.psm1` `.psd1` | PowerShell parser + Windows PowerShell 5.1 encoding rule (non-ASCII without BOM is a defect) | parse error or encoding defect → fail |
-| `.js` `.mjs` `.cjs` | `<node> --check` | non-zero exit → fail |
+| `.js` `.mjs` `.cjs` | one batch process: `vm.Script`/`vm.SourceTextModule` syntax check + relative import resolution | syntax error or unresolved relative import → fail |
 | `.json` | `JSON.parse` (BOM tolerated) | parse error → fail |
-| `.ts` `.tsx` | `tsc --noEmit`, only when `tsc` is configured | not configured → skip |
+| `.ts` `.tsx` | `tsc -p <tsconfig> --noEmit` when `tsconfig.json` exists, else per-file `tsc --noEmit`; only when `tsc` is configured | not configured → skip |
 | `.py` | `ruff check`, or `python -m py_compile` when ruff is absent | non-zero exit → fail |
 | Anything else | — | skip, with the reason attached |
 | Owning tests | `<dir>/test/*.mjs` (prefers `test.*` / `*.test.*` / `*.spec.*`), or `package.json` `scripts.test` | non-zero exit → fail |
@@ -109,6 +109,8 @@ The tool result carries a `claimChecks` entry that can be passed to `claim_plan`
 ```json
 { "id": "selftest", "kind": "command", "title": "selftest passed: …", "command": "<node> …cli.js --root … --no-persist --quiet [--files …]" }
 ```
+
+> `claimChecks` needs the Harness claimcheck plugin (`claim_plan` / `claim_verify`); Harnesses without it (e.g. DSH Go on a phone) can ignore that entry and use the exit code.
 
 ## Language
 
@@ -200,11 +202,12 @@ Cost: in restricted environments a `.ps1` batch collapses to one line (no per-fi
 - Only plugin directories whose absolute path contains `\dev\plugins\<name>\` are scanned; plugins elsewhere do not trigger "no tests is a failure".
 - A file explicitly passed via `--files` that does not exist is judged fail (never quietly treated as "nothing to check").
 - **It executes code from the workspace**: `scripts.test` and `test/*.mjs` are spawned directly. On an untrusted repository, read the tests before running.
+- No YAML parser is bundled: `.yml`/`.yaml` are still skipped, so a broken `cordis.patch.yml` is not caught. Wire in an external checker when you need one.
 
 ## Development & tests
 
 ```bash
-node test/test.mjs       # unit + end-to-end, 26 cases
+node test/test.mjs       # unit + end-to-end, 27 cases
 node test/i18n.mjs       # UI language (zh / en), 11 cases
 node test/mobile.mjs     # phone/portability regressions, 12 cases
 node test/gauntlet.mjs   # "order fried rice at a bar" group 1, 24 assertions
