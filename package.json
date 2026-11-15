@@ -35,8 +35,18 @@
   "engines": {
     "node": ">=18"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Tirpitz-39/dsh-selftest.git"
+  },
+  "homepage": "https://github.com/Tirpitz-39/dsh-selftest#readme",
+  "bugs": {
+    "url": "https://github.com/Tirpitz-39/dsh-selftest/issues"
+  },
   "keywords": [
     "dsh",
+    "dsh-plugin",
+    "dsh-bundle",
     "deepseek-harness",
     "selftest",
     "changed-files",
