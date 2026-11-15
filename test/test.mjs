@@ -16,7 +16,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { collectChanges, parsePorcelain, unquote } from '../lib/collect.js'
-import { buildPlan, deriveTestSteps, listTestFiles, parseJsonFile, pluginPolicySteps } from '../lib/plan.js'
+import { buildPlan, deriveTestSteps, jsModuleKind, listTestFiles, parseJsonFile, pluginPolicySteps } from '../lib/plan.js'
 import { expandStep, formatResult, runSelftest } from '../lib/core.js'
 import { prune, persistReport, readLatest } from '../lib/report.js'
 import { findOnPath, pickGit, pickParseScript, pickPwsh, resolveConfig } from '../lib/config.js'
@@ -465,6 +465,42 @@ await test('argumentList maps tool arguments to CLI flags', () => {
 
   const defaults = argumentList({}, { agent: { session: { header: { cwd: 'C:\\w' } } } })
   assert.deepEqual(defaults, ['--json', '--root', 'C:\\w'])
+})
+
+await test('jsModuleKind keeps module resolution deterministic across Node versions', () => {
+  const fixture = makeFixture({
+    'plain/broken.js': 'export const = 1\n',
+    'pkg-esm/package.json': '{ "type": "module" }\n',
+    'pkg-esm/a.js': 'export const a = 1\n',
+    'pkg-cjs/package.json': '{ "type": "commonjs" }\n',
+    'pkg-cjs/b.js': 'module.exports = 1\n',
+  })
+  try {
+    assert.equal(jsModuleKind(join(fixture.dir, 'plain/broken.js'), fixture.dir), 'esm')
+    assert.equal(jsModuleKind(join(fixture.dir, 'pkg-esm/a.js'), fixture.dir), 'esm')
+    assert.equal(jsModuleKind(join(fixture.dir, 'pkg-cjs/b.js'), fixture.dir), 'cjs')
+    assert.equal(jsModuleKind(join(fixture.dir, 'pkg-esm/a.mjs'), fixture.dir), 'esm')
+    assert.equal(jsModuleKind(join(fixture.dir, 'pkg-esm/a.cjs'), fixture.dir), 'cjs')
+  } finally { fixture.cleanup() }
+})
+
+await test('buildPlan checks bare ESM .js through an .mjs copy (Node 20/22 --check bug)', () => {
+  const fixture = makeFixture({ 'broken.js': 'export const = 1\n', 'ok.json': '{}\n' })
+  try {
+    const files = [
+      { path: join(fixture.dir, 'broken.js'), source: 'mtime' },
+      { path: join(fixture.dir, 'ok.json'), source: 'mtime' },
+    ]
+    const plan = buildPlan({
+      root: fixture.dir,
+      files,
+      cfg: { node: NODE, pwsh: PWSH, parsePs1: PARSE_PS1, ts: '', tsc: '', ruff: '', python: '', strictPlugins: false },
+    })
+    const jsStep = plan.steps.find(step => step.id.startsWith('js:'))
+    assert.ok(jsStep, 'js step exists')
+    assert.equal(jsStep.esmCopy, join(fixture.dir, 'broken.js'))
+    assert.deepEqual(jsStep.args, ['--check', '{{ESM_COPY}}'])
+  } finally { fixture.cleanup() }
 })
 
 /* --------------------------------------------------------------- summary */
