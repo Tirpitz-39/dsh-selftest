@@ -73,6 +73,7 @@
     "shTitle": "Shell syntax ({n} files)",
     "shUnavailable": "No usable bash on this machine; .sh checks are skipped",
     "yamlTitle": "YAML validation ({n} files)",
-    "yamlUnavailable": "No YAML validator configured (DSH_SELFTEST_YAML); YAML files are skipped"
+    "yamlUnavailable": "No YAML validator configured (DSH_SELFTEST_YAML); YAML files are skipped",
+    "skippedChecks": "Skipped checks: {files}"
   }
 }

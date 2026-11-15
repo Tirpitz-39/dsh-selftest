@@ -73,6 +73,7 @@
     "shTitle": "Shell 语法（{n} 个文件）",
     "shUnavailable": "本机没有可用的 bash，跳过 .sh 检查",
     "yamlTitle": "YAML 校验（{n} 个文件）",
-    "yamlUnavailable": "没有配置 YAML 校验器（DSH_SELFTEST_YAML），跳过 YAML 文件"
+    "yamlUnavailable": "没有配置 YAML 校验器（DSH_SELFTEST_YAML），跳过 YAML 文件",
+    "skippedChecks": "跳过的检查：{files}"
   }
 }
