@@ -20,6 +20,7 @@ import { buildPlan, deriveTestSteps, listTestFiles, parseJsonFile, pluginPolicyS
 import { expandStep, formatResult, runSelftest } from '../lib/core.js'
 import { prune, persistReport, readLatest } from '../lib/report.js'
 import { findOnPath, pickGit, pickParseScript, pickPwsh, resolveConfig } from '../lib/config.js'
+import { proveSelf } from '../lib/prove.js'
 import { apply, argumentList } from '../lib/index.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -360,6 +361,20 @@ await test('an explicitly requested missing file fails instead of being ignored'
     assert.ok(result.missing.some(path => path.endsWith('ghost.js')))
     assert.ok(result.results.some(row => row.status === 'fail'))
   } finally { fixture.cleanup() }
+})
+
+await test('proveSelf turns each checker red on a known-bad sample and green on a clean one', async () => {
+  const result = await proveSelf()
+  assert.ok(result.total >= 8, `expected at least 8 prove cases, got ${result.total}`)
+  assert.equal(result.passed, result.total, JSON.stringify(result.cases.filter(c => !c.ok)))
+  assert.ok(result.cases.some(c => c.id === 'broken-js' && c.actual === 'fail'))
+  assert.ok(result.cases.some(c => c.id === 'clean-code' && c.actual === 'pass'))
+  assert.ok(result.cases.some(c => c.id === 'missing-file' && c.actual === 'fail'))
+})
+
+await test('argumentList maps the prove flag', () => {
+  const argv = argumentList({ prove: true }, {})
+  assert.ok(argv.includes('--prove'))
 })
 
 await test('plan mode records steps without executing them', async () => {

@@ -78,13 +78,18 @@ selftest                          # 检查当前会话工作区的改动
 selftest { action: "plan" }       # 只列计划，不执行
 selftest { root: "/path/to/tools", since: 60 }
 selftest { files: ["a.ps1"] }     # 只查指定文件
+selftest { prove: true }          # 检查器体检：先证明自己会红，再检查你的代码
 ```
 
 命令行：
 
 ```
-node lib/cli.js [root] [--explain] [--json] [--quiet] [--no-persist]
+node lib/cli.js [root] [--explain] [--json] [--quiet] [--no-persist] [--prove]
 ```
+
+`--prove` 是检查器自己的体检：用 9 个已知样本（坏 JS、坏 JSON、编码缺陷的 .ps1、失败的测试、
+不存在的文件/root、未知扩展名、干净代码、空目录）逐个验证「该红的会红、该绿的会绿」。
+检查器自己都没被验证过，就没资格检查别的代码。9/9 通过才算健康。
 
 退出码：`0` 通过 / 无改动 / `--explain`；`1` 有失败；`2` 参数错误。
 
@@ -156,7 +161,7 @@ node lib/cli.js [root] [--explain] [--json] [--quiet] [--no-persist]
 ## 开发与测试
 
 ```bash
-node test/test.mjs       # 单元 + 端到端，22 个用例
+node test/test.mjs       # 单元 + 端到端，24 个用例
 node test/gauntlet.mjs   # 「去酒吧点蛋炒饭」第一组，24 条断言
 node test/gauntlet2.mjs  # 第二组（git/输入/输出契约），20 组场景、28 条断言
 ```
@@ -168,7 +173,7 @@ node test/gauntlet2.mjs  # 第二组（git/输入/输出契约），20 组场景
 `--json` 严格可解析、exit code 契约（1=fail、2=参数错）、`--quiet` 单行、`--no-persist` 不落盘、证据文件结构、
 中文与 emoji 路径、相对路径入参、Windows 大小写去重、5MB JSON、只读文件、损坏的 `.git`。
 
-22 个用例：git 输出解析、按扩展名分组、测试发现（test 文件优先于 scripts.test）、插件策略、报告落盘与清理、
+24 个用例：prove 体检、git 输出解析、按扩展名分组、测试发现（test 文件优先于 scripts.test）、插件策略、报告落盘与清理、
 `.ps1` 真实解析（无 pwsh 时跳过）、端到端 pass / fail / plan / 无改动、缺失文件 fail、工具注册形状。
 
 夹具全部建在系统临时目录，不会拿真实工作区糊弄自己。
