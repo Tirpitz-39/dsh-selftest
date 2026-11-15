@@ -164,6 +164,7 @@ node lib/cli.js [root] [--explain] [--json] [--quiet] [--no-persist] [--prove]
 node test/test.mjs       # 单元 + 端到端，24 个用例
 node test/gauntlet.mjs   # 「去酒吧点蛋炒饭」第一组，24 条断言
 node test/gauntlet2.mjs  # 第二组（git/输入/输出契约），20 组场景、28 条断言
+node test/gauntlet3.mjs  # 第三组（--prove 体检与参数组合），21 条断言
 ```
 
 `gauntlet*.mjs` 不测功能，专测**它会不会骗人**：未知扩展名必须 skip 而不是静默通过、显式指定的文件不存在必须 fail、
@@ -172,6 +173,9 @@ node test/gauntlet2.mjs  # 第二组（git/输入/输出契约），20 组场景
 第二组还覆盖：git 未跟踪/已修改/删除、`node_modules` 跳过、`.ts` 无编译器时说明原因、不存在的 root 必须报错、
 `--json` 严格可解析、exit code 契约（1=fail、2=参数错）、`--quiet` 单行、`--no-persist` 不落盘、证据文件结构、
 中文与 emoji 路径、相对路径入参、Windows 大小写去重、5MB JSON、只读文件、损坏的 `.git`。
+
+第三组专打 `--prove`：体检结果必须真红真绿（不是嘴上说）、不写证据、不弄脏 git 工作区、临时目录清理干净、
+幂等、缺 root/带 `--files`/带 `--plan` 时行为明确。
 
 24 个用例：prove 体检、git 输出解析、按扩展名分组、测试发现（test 文件优先于 scripts.test）、插件策略、报告落盘与清理、
 `.ps1` 真实解析（无 pwsh 时跳过）、端到端 pass / fail / plan / 无改动、缺失文件 fail、工具注册形状。
