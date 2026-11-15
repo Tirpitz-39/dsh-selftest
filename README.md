@@ -46,6 +46,8 @@ AGENTS.md 里的「必须测试 / 必须检查」是写给人看的规则，忘�
 | `.json` | `JSON.parse`（容忍 BOM） | 解析失败即 fail |
 | `.ts` `.tsx` | 有 `tsconfig.json` 时 `tsc -p <tsconfig> --noEmit`，否则逐文件 `tsc --noEmit`；仅在配置了 `tsc` 时启用 | 未配置则 skip |
 | `.py` | `ruff check`，未配置则 `python -m py_compile` | 非 0 退出即 fail |
+| `.sh` `.bash` | `bash -n`（PATH 探测） | 非 0 退出即 fail；无 bash 则 skip |
+| `.yml` `.yaml` | 可选：配置 `DSH_SELFTEST_YAML`（如 python3 + PyYAML） | 未配置则 skip |
 | 其它 | — | skip，附原因 |
 | 所属测试 | `<dir>/test/*.mjs`（优先 `test.*` / `*.test.*` / `*.spec.*`），或 `package.json` 的 `scripts.test` | 非 0 退出即 fail |
 
@@ -58,8 +60,8 @@ AGENTS.md 里的「必须测试 / 必须检查」是写给人看的规则，忘�
 **从 npm 安装**（推荐）：
 
 ```bash
-npm i -g dsh-selftest@0.1.1     # 全局命令行
-npx dsh-selftest@0.1.1           # 或直接跑一次
+npm i -g dsh-selftest@0.2.1     # 全局命令行
+npx dsh-selftest@0.2.1           # 或直接跑一次
 ```
 
 **作为 DSH 插件**：`dsh plugin add dsh-selftest`（或把本包放进 profile 的 `node_modules`），在 DSH 里启用后即可使用 `selftest` 工具。
@@ -147,6 +149,8 @@ node lib/cli.js [root] [--explain] [--json] [--quiet] [--no-persist] [--prove]
 | `DSH_SELFTEST_EVIDENCE_DIR` | `<root>/.dsh/selftest`（Linux `$DSH_HOME/cache/selftest`） | 证据目录 |
 | `DSH_SELFTEST_PLUGIN_ROOTS` | 空 | 额外插件根（逗号分隔绝对路径，其直接子目录视为插件） |
 | `DSH_SELFTEST_QUICK` | `0` | `1` 等价 `--quick` |
+| `DSH_SELFTEST_BASH` | 自动探测 | bash（`.sh` 的 `bash -n`） |
+| `DSH_SELFTEST_YAML` | 空 | YAML 校验器可执行（如 `python3`，需能 `import yaml`）；空 = 跳过 YAML |
 
 ## 手机 / 低功耗平台
 
@@ -207,7 +211,7 @@ node lib/cli.js [root] [--explain] [--json] [--quiet] [--no-persist] [--prove]
 - 只扫绝对路径含 `\dev\plugins\<name>\` 的插件目录，其它位置的插件不会触发「无测试即失败」。
 - 显式用 `--files` 指定、但实际不存在的文件会判 fail（不会悄悄当成“没有可查的”）。
 - **会执行工作区里的代码**：`scripts.test`、`test/*.mjs` 都是直接 spawn 的。不可信仓库上先看测试内容再跑。
-- 不内置 YAML 解析器：`.yml`/`.yaml` 仍记 skip，改坏的 `cordis.patch.yml` 不会被发现。需要时接外部校验器。
+- 不内置 YAML 解析器：默认跳过 `.yml`/`.yaml`。配置 `DSH_SELFTEST_YAML`（能 `import yaml` 的解释器）后启用校验；校验器缺失会明确判 fail，不会假装通过。
 
 ## 开发与测试
 

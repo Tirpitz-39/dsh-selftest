@@ -10,7 +10,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        node: [18, 20, 22]
+        node: [18, 20, 22, 24]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -19,15 +19,5 @@ jobs:
           node-version: ${{ matrix.node }}
       - name: Syntax check
         run: node --check lib/cli.js
-      - name: Unit tests
-        run: node test/test.mjs
-      - name: i18n tests
-        run: node test/i18n.mjs
-      - name: Portability tests
-        run: node test/mobile.mjs
-      - name: Gauntlet 1
-        run: node test/gauntlet.mjs
-      - name: Gauntlet 2
-        run: node test/gauntlet2.mjs
-      - name: Gauntlet 3
-        run: node test/gauntlet3.mjs
+      - name: Full test suite
+        run: npm test

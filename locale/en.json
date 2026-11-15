@@ -66,6 +66,13 @@
     "depthLimited": "\n⚠️ Directory depth limit reached; deeper files were not scanned",
     "moreFailures": "… {n} more failure(s); see the evidence file",
     "skipSummary": "{n} item(s) skipped",
-    "proveTitleWithInconclusive": "selftest checker health check: verified {verified}/{total} (inconclusive {inconclusive})"
+    "proveTitleWithInconclusive": "selftest checker health check: verified {verified}/{total} (inconclusive {inconclusive})",
+    "uncheckedFiles": "Not checked: {n} file(s) — {files}",
+    "proveUnresolvedImport": "an unresolved relative import is judged fail",
+    "provePluginPolicy": "a changed plugin without tests is judged fail",
+    "shTitle": "Shell syntax ({n} files)",
+    "shUnavailable": "No usable bash on this machine; .sh checks are skipped",
+    "yamlTitle": "YAML validation ({n} files)",
+    "yamlUnavailable": "No YAML validator configured (DSH_SELFTEST_YAML); YAML files are skipped"
   }
 }

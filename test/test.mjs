@@ -19,7 +19,7 @@ import { collectChanges, parsePorcelain, unquote } from '../lib/collect.js'
 import { buildPlan, deriveTestSteps, jsModuleKind, listTestFiles, parseJsonFile, pluginPolicySteps } from '../lib/plan.js'
 import { expandStep, formatResult, runSelftest } from '../lib/core.js'
 import { prune, persistReport, readLatest } from '../lib/report.js'
-import { findOnPath, pickGit, pickParseScript, pickPwsh, resolveConfig } from '../lib/config.js'
+import { findOnPath, isMobilePlatform, pickGit, pickParseScript, pickPwsh, resolveConfig } from '../lib/config.js'
 import { proveSelf } from '../lib/prove.js'
 import { apply, argumentList } from '../lib/index.js'
 
@@ -155,8 +155,15 @@ await test('buildPlan groups files by extension and marks unknown ones skipped',
     assert.equal(plan.skipped.length, 1)
     assert.equal(plan.skipped[0].file, 'd.txt')
     const ps1Step = plan.steps.find(step => step.id === 'ps1:batch')
-    assert.ok(ps1Step !== undefined, 'ps1 files are batched into one step')
-    assert.equal(ps1Step.listFiles.length, 1)
+    if (HAVE_PS1) {
+      assert.ok(ps1Step !== undefined, 'ps1 files are batched into one step')
+      assert.equal(ps1Step.listFiles.length, 1)
+    } else {
+      // No PowerShell on this platform: an explicit skip step, not a batch.
+      const skip = plan.steps.find(step => step.id === 'ps1:unavailable')
+      assert.ok(skip !== undefined, 'no PowerShell becomes an explicit skip step')
+      assert.equal(skip.run().skipped, true)
+    }
   } finally { fixture.cleanup() }
 })
 
@@ -198,7 +205,13 @@ await test('deriveTestSteps respects package.json scripts.test', () => {
     }).files
     const steps = deriveTestSteps({ root: fixture.dir, files, cfg })
     assert.equal(steps.length, 1)
-    if (findOnPath(['npm']) === '') {
+    if (isMobilePlatform()) {
+      // Phone profile: npm test is deliberately skipped and says so.
+      assert.equal(steps[0].kind, 'inline')
+      assert.equal(steps[0].run().ok, true)
+      assert.equal(steps[0].run().skipped, true)
+      assert.match(steps[0].run().detail, /npm/)
+    } else if (findOnPath(['npm']) === '') {
       // No npm on this machine: the plan must say so explicitly instead of
       // spawning a command that cannot exist.
       assert.equal(steps[0].kind, 'inline')
@@ -309,15 +322,17 @@ await test('runSelftest passes on a clean JS/JSON fixture', async () => {
     'config.json': '{\n  "ok": true\n}\n',
   })
   try {
+    const evidenceDir = join(fixture.dir, '.dsh', 'selftest')
     const result = await runSelftest({
       root: fixture.dir,
       sinceMinutes: 10,
       persist: true,
+      config: { evidenceDir },
     })
     assert.equal(result.verdict, 'pass', formatResult(result, { verbose: true }))
     assert.equal(result.counts.fail, 0)
     assert.ok(result.counts.total >= 2)
-    assert.ok(existsSync(join(fixture.dir, '.dsh', 'selftest', 'latest.json')))
+    assert.ok(existsSync(join(evidenceDir, 'latest.json')))
     assert.equal(result.claimChecks.length, 1, 'a claim_plan-ready check is offered')
   } finally { fixture.cleanup() }
 })
@@ -465,7 +480,10 @@ await test('argumentList maps tool arguments to CLI flags', () => {
   assert.ok(argv.includes('--no-strict-plugins'))
 
   const defaults = argumentList({}, { agent: { session: { header: { cwd: 'C:\\w' } } } })
-  assert.deepEqual(defaults, ['--json', '--root', 'C:\\w'])
+  const expected = isMobilePlatform()
+    ? ['--json', '--root', 'C:\\w', '--summary']
+    : ['--json', '--root', 'C:\\w']
+  assert.deepEqual(defaults, expected)
 })
 
 await test('jsModuleKind keeps module resolution deterministic across Node versions', () => {
@@ -532,6 +550,28 @@ await test('JS batch flags broken syntax and unresolved relative imports', async
       assert.equal(byFile['ok-import.mjs'], 'pass')
     }
     assert.ok(result.results.some(item => item.status === 'fail'))
+  } finally { fixture.cleanup() }
+})
+
+await test('buildPlan handles .sh and .yml without leaking them into skipped', () => {
+  const fixture = makeFixture({ 'run.sh': 'echo hi\n', 'cordis.patch.yml': 'a: 1\n' })
+  try {
+    const files = [
+      { path: join(fixture.dir, 'run.sh'), source: 'mtime' },
+      { path: join(fixture.dir, 'cordis.patch.yml'), source: 'mtime' },
+    ]
+    const plan = buildPlan({ root: fixture.dir, files, cfg: resolveConfig({}) })
+    assert.equal(plan.counts.sh, 1)
+    assert.equal(plan.counts.yaml, 1)
+    assert.equal(plan.skipped.length, 0)
+    assert.ok(
+      plan.steps.some(step => step.id === 'sh:unavailable') || plan.steps.some(step => step.family === 'sh'),
+      'shell files get a planned step',
+    )
+    assert.ok(
+      plan.steps.some(step => step.id === 'yaml:unavailable') || plan.steps.some(step => step.family === 'yaml'),
+      'yaml files get a planned step',
+    )
   } finally { fixture.cleanup() }
 })
 

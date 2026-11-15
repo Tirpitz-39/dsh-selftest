@@ -207,10 +207,13 @@ function check(name, ok, detail) {
 // 14. 默认 persist：写 latest.json 且结构完整
 {
   const d = mk()
+  const evidenceDir = join(d, '.dsh', 'selftest')
+  const previous = process.env.DSH_SELFTEST_EVIDENCE_DIR
+  process.env.DSH_SELFTEST_EVIDENCE_DIR = evidenceDir
   try {
     w(d, 'a.js', 'export const a = 1\n')
     runCli([d])
-    const latest = join(d, '.dsh', 'selftest', 'latest.json')
+    const latest = join(evidenceDir, 'latest.json')
     const okFile = existsSync(latest)
     let okShape = false
     if (okFile) {
@@ -219,7 +222,11 @@ function check(name, ok, detail) {
     }
     check('14. latest.json 被写入', okFile)
     check('14b. latest.json 含 verdict/runId/counts', okShape)
-  } finally { rm(d) }
+  } finally {
+    if (previous === undefined) delete process.env.DSH_SELFTEST_EVIDENCE_DIR
+    else process.env.DSH_SELFTEST_EVIDENCE_DIR = previous
+    rm(d)
+  }
 }
 
 // 15. 中文 + emoji 文件名

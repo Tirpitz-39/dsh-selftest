@@ -66,6 +66,13 @@
     "depthLimited": "\n⚠️ 目录深度达到上限，更深的文件未扫描",
     "moreFailures": "…… 另有 {n} 条失败，见证据文件",
     "skipSummary": "另有 {n} 项被跳过",
-    "proveTitleWithInconclusive": "selftest 检查器体检：verified {verified}/{total}（inconclusive {inconclusive}）"
+    "proveTitleWithInconclusive": "selftest 检查器体检：verified {verified}/{total}（inconclusive {inconclusive}）",
+    "uncheckedFiles": "未检查 {n} 个文件：{files}",
+    "proveUnresolvedImport": "相对 import 无法解析判 fail",
+    "provePluginPolicy": "改动插件无测试判 fail",
+    "shTitle": "Shell 语法（{n} 个文件）",
+    "shUnavailable": "本机没有可用的 bash，跳过 .sh 检查",
+    "yamlTitle": "YAML 校验（{n} 个文件）",
+    "yamlUnavailable": "没有配置 YAML 校验器（DSH_SELFTEST_YAML），跳过 YAML 文件"
   }
 }

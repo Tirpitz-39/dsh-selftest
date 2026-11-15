@@ -46,6 +46,8 @@ In short: it is for "an AI just edited code, check it right now", not a commit h
 | `.json` | `JSON.parse` (BOM tolerated) | parse error → fail |
 | `.ts` `.tsx` | `tsc -p <tsconfig> --noEmit` when `tsconfig.json` exists, else per-file `tsc --noEmit`; only when `tsc` is configured | not configured → skip |
 | `.py` | `ruff check`, or `python -m py_compile` when ruff is absent | non-zero exit → fail |
+| `.sh` `.bash` | `bash -n` (discovered on PATH) | non-zero exit → fail; no bash → skip |
+| `.yml` `.yaml` | optional: configure `DSH_SELFTEST_YAML` (e.g. python3 + PyYAML) | not configured → skip |
 | Anything else | — | skip, with the reason attached |
 | Owning tests | `<dir>/test/*.mjs` (prefers `test.*` / `*.test.*` / `*.spec.*`), or `package.json` `scripts.test` | non-zero exit → fail |
 
@@ -58,8 +60,8 @@ Requires Node.js 18+.
 **From npm** (recommended):
 
 ```bash
-npm i -g dsh-selftest@0.1.1     # global CLI
-npx dsh-selftest@0.1.1           # or run it once
+npm i -g dsh-selftest@0.2.1     # global CLI
+npx dsh-selftest@0.2.1           # or run it once
 ```
 
 **As a DSH plugin**: `dsh plugin add dsh-selftest` (or place the package in the profile's `node_modules`) and enable it in DSH; the `selftest` tool is then available.
@@ -145,6 +147,8 @@ The `--help` text, `--json` `text`, `--quiet` line, `--prove` output, error mess
 | `DSH_SELFTEST_EVIDENCE_DIR` | `<root>/.dsh/selftest` (Linux `$DSH_HOME/cache/selftest`) | evidence directory |
 | `DSH_SELFTEST_PLUGIN_ROOTS` | empty | extra plugin roots (comma-separated absolute paths; direct children are plugins) |
 | `DSH_SELFTEST_QUICK` | `0` | `1` is the same as `--quick` |
+| `DSH_SELFTEST_BASH` | auto-detected | bash for `bash -n` on `.sh` |
+| `DSH_SELFTEST_YAML` | empty | YAML validator executable (e.g. `python3` with PyYAML); empty = skip YAML |
 
 ## Phones / low-power platforms
 
@@ -202,7 +206,7 @@ Cost: in restricted environments a `.ps1` batch collapses to one line (no per-fi
 - Only plugin directories whose absolute path contains `\dev\plugins\<name>\` are scanned; plugins elsewhere do not trigger "no tests is a failure".
 - A file explicitly passed via `--files` that does not exist is judged fail (never quietly treated as "nothing to check").
 - **It executes code from the workspace**: `scripts.test` and `test/*.mjs` are spawned directly. On an untrusted repository, read the tests before running.
-- No YAML parser is bundled: `.yml`/`.yaml` are still skipped, so a broken `cordis.patch.yml` is not caught. Wire in an external checker when you need one.
+- No YAML parser is bundled: `.yml`/`.yaml` are skipped by default. Configure `DSH_SELFTEST_YAML` (an interpreter that can `import yaml`) to validate them; a broken validator fails instead of pretending to pass.
 
 ## Development & tests
 

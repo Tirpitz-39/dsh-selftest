@@ -146,7 +146,10 @@ console.log('# 8. 插件有测试：跑测试并通过')
     w(d, 'dev/plugins/has-tests/cordis.patch.yml', '- insert: []\n')
     w(d, 'dev/plugins/has-tests/test/test.mjs', 'console.log("ok")\n')
     const r = runCli([d])
-    check('有测试插件通过', r.json?.verdict === 'pass', `verdict=${r.json?.verdict}`)
+    // cordis.patch.yml is an unchecked extension, so the honest verdict is
+    // partial; the point of this case is that the plugin policy does not fire.
+    check('有测试插件不判 fail', r.json?.verdict !== 'fail', `verdict=${r.json?.verdict}`)
+    check('插件政策没有误报', !(r.json?.results ?? []).some(row => String(row.family) === 'plugin-policy'))
   } finally { rm(d) }
 }
 

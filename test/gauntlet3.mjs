@@ -53,7 +53,8 @@ function proveDirs() {
   const r = runCli(['--prove'])
   check('1. --prove exit 0', r.code === 0, `code=${r.code}`)
   check('2. 文本含「检查器体检」', /检查器体检/.test(String(r.json?.text ?? '')), String(r.json?.text ?? '').slice(0, 80))
-  check('3. 报告 9/9 通过', /9\/9 通过/.test(String(r.json?.text ?? '')), String(r.json?.text ?? '').slice(0, 120))
+  const text = String(r.json?.text ?? '')
+  check('3. 报告全部通过', new RegExp(`${r.json?.total}/${r.json?.total} 通过`).test(text), text.slice(0, 120))
 }
 
 // 4-5. JSON 结构完整
