@@ -31,7 +31,7 @@ AGENTS.md 里的「必须测试 / 必须检查」是写给人看的规则，忘�
 | [lefthook](https://github.com/evilmartians/lefthook) | git hooks | 按 glob | 快速 hook 编排 | 调度器，不含检查推导 |
 | [nx affected](https://github.com/nrwl/nx) | CI / 本地 | 项目图 | 构建 + 测试 | 需要项目接入 nx，重 |
 | [danger-js](https://github.com/danger/danger-js) | PR / CI | 变更文件 | 自定义规则 | 在 CI 环节，不是本地即时 |
-| **dsh-selftest** | **任意时刻（工具 / 命令行调用）** | git status + mtime | 语法 + 所属测试 + 无测试即失败 | 不依赖 git hook；不认识的扩展名直接 FAIL；面向 AI agent 会话 |
+| **dsh-selftest** | **任意时刻（工具 / 命令行调用）** | git status + mtime | 语法 + 所属测试 + 无测试即失败 | 不依赖 git hook；不认识的扩展名显式 skip（附原因）；面向 AI agent 会话 |
 
 简言之：它是给「AI 改完代码马上自检」用的，不是提交钩子，也不是 CI 系统。
 
@@ -116,6 +116,7 @@ node lib/cli.js [root] [--explain] [--json] [--quiet] [--no-persist] [--prove]
 | `DSH_SELFTEST_RUFF` | 空 | 配置后启用 ruff，否则 `py_compile` |
 | `DSH_SELFTEST_GIT` | 自动探测 | git 可执行文件 |
 | `DSH_SELFTEST_STRICT_PLUGINS` | `1` | `0` 关闭「插件无测试即失败」 |
+| `DSH_SELFTEST_LANG` | 跟随系统 | 界面语言：`zh` / `en`（也认 `LC_ALL`/`LANG`；中文系统默认中文，其余英文） |
 
 **node 探测**：Harness 宿主是 Electron，`process.execPath` 是 `DSH NEXT.exe` 而不是 node，
 喂它 `--check` 必然失败。所以按 `DSH_SELFTEST_NODE` → 自身是 node → PATH → `$DSH_HOME` 自带运行时 的顺序探测。
@@ -164,6 +165,7 @@ node lib/cli.js [root] [--explain] [--json] [--quiet] [--no-persist] [--prove]
 
 ```bash
 node test/test.mjs       # 单元 + 端到端，24 个用例
+node test/i18n.mjs       # 界面语言（zh / en），11 个用例
 node test/gauntlet.mjs   # 「去酒吧点蛋炒饭」第一组，24 条断言
 node test/gauntlet2.mjs  # 第二组（git/输入/输出契约），20 组场景、28 条断言
 node test/gauntlet3.mjs  # 第三组（--prove 体检与参数组合），21 条断言

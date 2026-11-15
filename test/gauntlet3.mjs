@@ -10,6 +10,10 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+// Assertions below match Chinese text; pin the language instead of relying on
+// the host locale (CI runners are usually English).
+process.env.DSH_SELFTEST_LANG = 'zh'
+
 const NODE = process.execPath
 const CLI = fileURLToPath(new URL('../lib/cli.js', import.meta.url))
 const GIT = 'git'

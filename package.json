@@ -29,8 +29,8 @@
     }
   },
   "scripts": {
-    "test": "node test/test.mjs",
-    "check": "node --check lib/cli.js && node --check lib/index.js && node --check lib/config.js && node --check lib/collect.js && node --check lib/core.js && node --check lib/plan.js && node --check lib/report.js && node --check lib/run.js && node --check lib/tool.js"
+    "test": "node test/test.mjs && node test/i18n.mjs",
+    "check": "node --check lib/cli.js && node --check lib/index.js && node --check lib/config.js && node --check lib/collect.js && node --check lib/core.js && node --check lib/i18n.js && node --check lib/plan.js && node --check lib/report.js && node --check lib/run.js && node --check lib/tool.js"
   },
   "engines": {
     "node": ">=18"

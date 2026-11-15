@@ -38,6 +38,9 @@ process.env.DSH_SELFTEST_PARSE_PS1 = PARSE_PS1
 process.env.DSH_SELFTEST_GIT = GIT
 delete process.env.DSH_SELFTEST_TSC
 delete process.env.DSH_SELFTEST_RUFF
+// The suite asserts Chinese text, so pin the language instead of depending on
+// the host locale (CI runners are usually English).
+process.env.DSH_SELFTEST_LANG = 'zh'
 
 let passed = 0
 let failed = 0
