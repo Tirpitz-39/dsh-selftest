@@ -1,0 +1,39 @@
+name: release
+
+# Publishing is manual or tag-driven; a normal push never publishes.
+#
+# Before the first release, pick one auth path:
+#   - npm automation token stored as the repository secret NPM_TOKEN (this
+#     workflow's default), or
+#   - npm trusted publishing (OIDC) configured for this repository, in which
+#     case drop NODE_AUTH_TOKEN from the publish step below.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: Full test suite
+        run: npm test
+      - name: Package contents
+        run: npm pack --dry-run
+      - name: Tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          node -e "const v = require('./package.json').version; const tag = process.env.GITHUB_REF_NAME; if (tag !== 'v' + v) { console.error('tag ' + tag + ' != v' + v); process.exit(1) }"
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

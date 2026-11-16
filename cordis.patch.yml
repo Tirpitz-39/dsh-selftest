@@ -5,3 +5,11 @@
 - insert:
     - id: dsh-selftest
       name: dsh-selftest
+      # Whistle: at the end of a turn that wrote files, name the changes that
+      # were never verified by selftest. It only speaks; it never blocks.
+      # Uncomment to tune it.
+      # config:
+      #   whistleMode: warn          # warn | strict | off
+      #   maxWhistlesPerSession: 2
+      #   requireWhistleAfterWrite: true
+      #   hardGate: nag              # nag | off

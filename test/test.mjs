@@ -333,7 +333,8 @@ await test('runSelftest passes on a clean JS/JSON fixture', async () => {
     assert.equal(result.counts.fail, 0)
     assert.ok(result.counts.total >= 2)
     assert.ok(existsSync(join(evidenceDir, 'latest.json')))
-    assert.equal(result.claimChecks.length, 1, 'a claim_plan-ready check is offered')
+    assert.equal(result.checks.length, 1, 'a consumer-ready check is offered')
+    assert.equal(result.claimChecks.length, 1, 'the deprecated claimChecks alias still mirrors checks')
   } finally { fixture.cleanup() }
 })
 

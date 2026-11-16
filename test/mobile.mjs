@@ -17,6 +17,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { collectChanges, hasSkippedSegment } from '../lib/collect.js'
+import { canSpawnPiped } from './support/sandbox.mjs'
 import { buildPlan, deriveTestSteps, findPluginDir, pluginPolicySteps } from '../lib/plan.js'
 import {
   MOBILE_DEFAULTS,
@@ -100,6 +101,13 @@ await test('hasSkippedSegment only judges paths below the root', () => {
 await test('root inside a git subdirectory still uses git', () => {
   const f = fixture({ 'packages/x/foo.js': 'export const x = 1\n' })
   try {
+    // A restricted sandbox denies piped child processes (EPERM): git cannot
+    // answer there, and collect falls back to mtime by design. Probe once and
+    // skip explicitly instead of reporting an environmental failure.
+    if (!canSpawnPiped('git')) {
+      console.log('  - skip: sandbox denies piped child processes (EPERM)')
+      return
+    }
     execFileSync('git', ['init', f.dir], { stdio: 'ignore' })
     execFileSync('git', ['-C', f.dir, 'add', '-A'], { stdio: 'ignore' })
     execFileSync('git', ['-C', f.dir, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-m', 'init'], { stdio: 'ignore' })

@@ -12,10 +12,19 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { pickPwsh } from '../lib/config.js'
+import { canSpawnPiped } from './support/sandbox.mjs'
 
 // Assertions below match Chinese text; pin the language instead of relying on
 // the host locale (CI runners are usually English).
 process.env.DSH_SELFTEST_LANG = 'zh'
+
+// Every case here drives the CLI through piped child processes. A restricted
+// sandbox denies those (EPERM); skip the whole suite explicitly there instead
+// of reporting a wall of false failures.
+if (!canSpawnPiped(process.execPath)) {
+  console.log('gauntlet: skipped (restricted sandbox: piped child processes are denied)')
+  process.exit(0)
+}
 
 const NODE = process.execPath
 const CLI = fileURLToPath(new URL('../lib/cli.js', import.meta.url))

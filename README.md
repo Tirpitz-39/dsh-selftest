@@ -23,6 +23,7 @@ AGENTS.md 里的「必须测试 / 必须检查」是写给人看的规则，忘�
 - 按扩展名推导检查器，**不认识的扩展名记为 skip，绝不静默通过**
 - 往上找 3 级，找到改动文件所属插件 / 项目的测试并跑一次
 - 改动插件源码但该插件没有任何测试 → 直接 FAIL
+- 改完文件后，轮末自动开口（**吹哨人**），指名哪些文件改过但没验过
 
 ## 和类似工具的区别
 
@@ -101,22 +102,22 @@ selftest { prove: true }          # 检查器体检：先证明自己会红，�
 命令行：
 
 ```
-node lib/cli.js [root] [--explain] [--json] [--quiet] [--no-persist] [--prove]
+node lib/cli.js [root] [--explain] [--json] [--quiet] [--no-persist] [--prove] [--audit]
 ```
 
-`--prove` 是检查器自己的体检：用 9 个已知样本（坏 JS、坏 JSON、编码缺陷的 .ps1、失败的测试、
-不存在的文件/root、未知扩展名、干净代码、空目录）逐个验证「该红的会红、该绿的会绿」。
-检查器自己都没被验证过，就没资格检查别的代码。9/9 通过才算健康。
+`--prove` 是检查器自己的体检：用 11 个已知样本（坏 JS、坏 JSON、编码缺陷的 .ps1、失败的测试、
+不存在的文件/root、未知扩展名、无法解析的相对 import、插件改了源码却没有测试、干净代码、空目录）
+逐个验证「该红的会红、该绿的会绿」。检查器自己都没被验证过，就没资格检查别的代码。11/11 通过才算健康。
 
 退出码：`0` 通过 / 无改动 / `--explain`；`1` 有失败；`2` 参数错误。
 
-工具返回里带一条 `claimChecks`，可直接原样传给 `claim_plan`：
+工具返回里带一条 `checks`（中性检查清单），任何消费者都能用：
 
 ```json
 { "id": "selftest", "kind": "command", "title": "selftest 通过：…", "command": "<node> …cli.js --root … --no-persist --quiet" }
 ```
 
-> `claimChecks` 依赖 DSH 的 claimcheck 插件提供 `claim_plan` / `claim_verify`；没有该插件的 Harness（例如手机端 DSH Go）可忽略这一项，直接看退出码。
+> 认领/验收插件（如 dsh-claimcheck 的 `claim_plan`）、CI、自研调度器都可以直接执行这条 command 或读整份 JSON；没有消费方的 Harness 看退出码即可。`claimChecks` 是旧字段名，内容与 `checks` 相同。
 
 ## 语言
 
@@ -126,11 +127,90 @@ node lib/cli.js [root] [--explain] [--json] [--quiet] [--no-persist] [--prove]
 2. `LC_ALL` / `LC_MESSAGES` / `LANG` / `LANGUAGE`
 3. 系统 locale（`Intl`；中文系统默认中文，其余英文）
 
-`--help`、`--json` 的 text、`--quiet` 行、`--prove` 输出、错误消息、`claimChecks` 标题都跟随所选语言。
+`--help`、`--json` 的 text、`--quiet` 行、`--prove` 输出、错误消息、`checks` 标题都跟随所选语言。
 
 ## 证据
 
 `<root>/.dsh/selftest/latest.json` 与 `runs/<id>.json`，保留最近 50 份（`keepRuns`）。
+
+每次运行同时记录每个检查文件的内容签名（`files[].signature`：size + mtime + sha256 前 16 位），
+吹哨人靠它判断「这个文件改过、但没验过」。签名是新鲜度信号，不是安全边界。
+
+结果里的 `checks` 是中性检查清单：`[{ id, kind: 'command', title, command, required: true }]`。
+任何消费者——认领/验收插件、CI、自研调度器——都可以直接读命令或整份 JSON，不需要了解本插件内部。
+（`claimChecks` 作为旧字段名保留，内容与 `checks` 完全相同。）
+
+## 吹哨人（自动开口）
+
+工具是被动等调用的；吹哨人负责在 DSH 会话里自己开口，不靠模型记性：
+
+1. 观察本轮工具结果：`write` / `edit`、会写文件的 shell 命令，记为「本轮改过」
+2. 轮结束（`agent/turn-stopping`）时，把当前改动文件与 `latest.json` 里记录的签名逐个比对
+3. 发现「改过但没验过 / 验过后又被改」的文件，注入一条 follow-up，指名道姓列出来
+
+边界（有意为之）：
+
+- 只吹不干活：它不跑检查、不改文件、不拦动作
+- 纯只读轮不触发；每会话最多 `maxWhistlesPerSession` 次（默认 2）
+- 同一文件同一内容只吹一次；内容变了才会再吹
+- 任何失败路径都保持安静，绝不打断轮次
+- `whistleMode: off`（或 `DSH_SELFTEST_WHISTLE_MODE=off`）可关闭
+
+配置写在 profile 的 `cordis.patch.yml`：
+
+```yaml
+- id: dsh-selftest
+  config:
+    whistleMode: warn            # warn | off
+    maxWhistlesPerSession: 2
+    requireWhistleAfterWrite: true
+```
+
+## 强制（打回未验证的流程）
+
+提醒是软的，强制要有退出码。三层，从通用到硬：
+
+### 1) 数据消费者入口：`--audit`
+
+```
+node lib/cli.js --root <dir> --audit [--json]
+```
+
+只审证据、不跑检查：读 `.dsh/selftest/latest.json` 里记录的签名，和当前改动文件逐个比。
+
+| 退出码 | 含义 |
+|---|---|
+| `0` | `fresh` / `partial` / `nothing`——可以继续 |
+| `1` | `unverified`（有未验或过期文件）或 `stale`（上次结论不是 pass）——**打回** |
+| `2` | 参数错误 |
+
+`--json` 输出 `{ verdict, total, verified, unverified: [{ rel, reason }], artifactPath }`。
+CI、git hook、自研调度器直接看退出码；需要更细的判断就解析 JSON。
+
+### 2) 会话内：`whistleMode: strict`
+
+轮末有未验文件时**持续打回**：每轮都吹（受 `maxWhistlesPerSession` 限制），直到跑过 selftest。
+`warn` 只吹一次，`strict` 每轮都吹。
+
+### 3) 工具层硬闸：`hardGate: nag`（默认开启）
+
+写完文件后，下一次「非只读」调用**被拒绝一次**，提示先跑 selftest：
+
+- 放行：`selftest`、只读工具（read / grep / glob 等）、`write` / `edit`（防止「修 bug」被死锁）
+- 拦截一次：shell 命令（含 `git commit`、`npm install`）、未知工具
+- 只拦一次，之后放行（避免死循环）；`selftest` 跑过即清除
+
+配置：
+
+```yaml
+- id: dsh-selftest
+  config:
+    whistleMode: strict          # warn | strict | off
+    maxWhistlesPerSession: 10
+    hardGate: nag                # nag | off
+```
+
+> 三层可独立开关。只用 `--audit` 就完全不打扰会话；要 DSH 里强制就开 `strict` + `hardGate`。
 
 ## 配置（环境变量，都有默认值）
 
@@ -153,6 +233,9 @@ node lib/cli.js [root] [--explain] [--json] [--quiet] [--no-persist] [--prove]
 | `DSH_SELFTEST_QUICK` | `0` | `1` 等价 `--quick` |
 | `DSH_SELFTEST_BASH` | 自动探测 | bash（`.sh` 的 `bash -n`） |
 | `DSH_SELFTEST_YAML` | 空 | YAML 校验器可执行（如 `python3`，需能 `import yaml`）；空 = 跳过 YAML |
+| `DSH_SELFTEST_WHISTLE_MODE` | `warn` | 吹哨人：`warn` / `strict` / `off` |
+| `DSH_SELFTEST_MAX_WHISTLES` | 2 | 每个会话最多吹几次 |
+| `DSH_SELFTEST_HARD_GATE` | `nag` | 工具层硬闸：`nag` / `off` |
 
 ## 手机 / 低功耗平台
 
@@ -192,13 +275,13 @@ node lib/cli.js [root] [--explain] [--json] [--quiet] [--no-persist] [--prove]
 
 ## 受限沙箱下的降级
 
-`claim_verify` 执行的命令运行在沙箱里，**无法创建命名管道**（`spawn EPERM`），也可能不允许写工作区之外的路径。
+从受限沙箱里触发的检查（例如外部验收工具调用时）运行在**无法创建命名管道**（`spawn EPERM`）的环境里，也可能不允许写工作区之外的路径。
 
 处理方式：
 
 - 管道 spawn 失败 → 自动改用 `stdio: 'inherit'` 重试，子进程输出直接转出，**退出码照常决定通过/失败**
 - 临时文件（`.ps1` 批量列表）按 `%TEMP%` → cwd → 步骤目录 顺序回退
-- `--no-persist` 让 claim 场景不写证据文件
+- `--no-persist` 让沙箱场景不写证据文件
 
 因此 `lib/parse-ps1.ps1` 除了输出 JSON，还会在有坏文件时 `exit 1`——即使 stdout 捕获不到，结论也不会丢。
 
@@ -209,7 +292,9 @@ node lib/cli.js [root] [--explain] [--json] [--quiet] [--no-persist] [--prove]
 - **验证不了用户侧现象**。语法对 ≠ 行为对，改完界面/命令仍然要自己跑一次。
 - 文件收集靠 git + mtime，改了但既没提交也没在 N 分钟内改过的文件不会被发现。
 - 测试发现只认约定目录，不解析代码里的测试标记。
-- 沙箱里 `spawn` 被彻底禁止时无法工作（当前实测仅管道受限，继承模式可用）。
+- 受限沙箱里管道子进程被禁（EPERM）时：git 收集会自动降级为 mtime；`i18n` / `mobile` 测试里依赖管道子进程的用例显式 skip 并写明原因，不会假装通过。
+- **本地证据可以被伪造**：`.dsh/selftest/latest.json` 是普通 JSON、没有密钥，能读到文件的人就能算出同样的签名并伪造一份 `pass`。`--audit` 能防的是「改了文件却不更新证据」（包括把 mtime 回拨、把文件删掉——它复核证据里记录过的每个文件），防不了「连证据一起伪造」。这一点在 `test/attack.mjs` 里有专门用例，不假装能防。
+- `--audit` 对「证据里记录过、现在被删除」的文件判 `unverified`（`auditDeletedSince`），不会静默放过。
 - 只扫绝对路径含 `\dev\plugins\<name>\` 的插件目录，其它位置的插件不会触发「无测试即失败」。
 - 显式用 `--files` 指定、但实际不存在的文件会判 fail（不会悄悄当成“没有可查的”）。
 - **会执行工作区里的代码**：`scripts.test`、`test/*.mjs` 都是直接 spawn 的。不可信仓库上先看测试内容再跑。
@@ -218,12 +303,14 @@ node lib/cli.js [root] [--explain] [--json] [--quiet] [--no-persist] [--prove]
 ## 开发与测试
 
 ```bash
-node test/test.mjs       # 单元 + 端到端，27 个用例
+node test/test.mjs       # 单元 + 端到端，28 个用例
 node test/i18n.mjs       # 界面语言（zh / en），11 个用例
 node test/mobile.mjs     # 手机/可移植性回归（.dsh root、git 子目录、缺工具、深度、quick），12 个用例
 node test/gauntlet.mjs   # 「去酒吧点蛋炒饭」第一组，24 条断言
 node test/gauntlet2.mjs  # 第二组（git/输入/输出契约），20 组场景、28 条断言
 node test/gauntlet3.mjs  # 第三组（--prove 体检与参数组合），21 条断言
+node test/whistle.mjs    # 吹哨人（签名比对、事件流、预算上限、中性 checks 字段），15 个用例
+node test/force.mjs      # 强制层（--audit 退出码、strict 打回、硬闸决策），14 个用例
 ```
 
 `gauntlet*.mjs` 不测功能，专测**它会不会骗人**：未知扩展名必须 skip 而不是静默通过、显式指定的文件不存在必须 fail、
@@ -236,10 +323,22 @@ node test/gauntlet3.mjs  # 第三组（--prove 体检与参数组合），21 条
 第三组专打 `--prove`：体检结果必须真红真绿（不是嘴上说）、不写证据、不弄脏 git 工作区、临时目录清理干净、
 幂等、缺 root/带 `--files`/带 `--plan` 时行为明确。
 
-27 个用例：prove 体检、git 输出解析、按扩展名分组、测试发现（test 文件优先于 scripts.test）、插件策略、报告落盘与清理、
+28 个用例：prove 体检、git 输出解析、按扩展名分组、测试发现（test 文件优先于 scripts.test）、插件策略、报告落盘与清理、
 `.ps1` 真实解析（无 pwsh 时跳过）、端到端 pass / fail / plan / 无改动、缺失文件 fail、工具注册形状。
 
 夹具全部建在系统临时目录，不会拿真实工作区糊弄自己。
+
+## 发布
+
+打 tag（`v*`，与 `package.json` 版本一致）会触发 `.github/workflows/release.yml`：
+全量测试 → `npm pack --dry-run` 校验包内容 → tag 与版本一致检查 → `npm publish`。普通 push 不发布。
+
+首次发布前二选一：
+
+- 在 GitHub 仓库 Secrets 配置 `NPM_TOKEN`（npm automation token）；
+- 或配置 npm trusted publishing（OIDC），并删掉 workflow 里的 `NODE_AUTH_TOKEN`。
+
+CI 在 Ubuntu + Windows 上跑 Node 18/20/22/24，macOS 上跑一个 Node 22 作业（只验证可移植性，不铺满矩阵）。
 
 ## 作者
 

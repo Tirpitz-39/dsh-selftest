@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.3.0
+
+- **Whistle** — the plugin now speaks on its own. At the end of a DSH turn that wrote
+  files, it compares the currently changed files against the content signatures recorded
+  by the last run and names the ones never verified in a single follow-up message.
+  It only speaks: never runs checks, never edits, never blocks. Read-only turns never
+  trigger it; at most `maxWhistlesPerSession` (default 2) per session; the same file at
+  the same content is never named twice; every failure path stays silent. Config:
+  `whistleMode: warn|off`, `requireWhistleAfterWrite`.
+- **Neutral `checks` field** — every result exposes
+  `[{ id, kind: 'command', title, command, required: true }]`. Any consumer (a
+  claim/acceptance plugin, CI, an in-house scheduler) can run the command or read the
+  whole JSON without knowing this plugin's internals. `claimChecks` remains as the
+  deprecated alias with identical content.
+- Each run records a **content signature per checked file** (`files[].signature`:
+  size + mtime + sha256 prefix); the whistle uses it to tell "changed but never
+  verified" from "verified, then untouched".
+- i18n/mobile test cases that need piped child processes now **skip explicitly with a
+  reason** in restricted sandboxes (`spawn EPERM`) instead of reporting a false failure.
+- JavaScript import scanning ignores import-looking text inside **strings and comments**
+  (a test fixture quoting `import './nope.js'`, or this repo's own regex comments, no
+  longer registers as an unresolved import).
+- **Enforcement (three layers)**:
+  - `--audit` CLI for data consumers: exit `0` fresh/partial/nothing, `1`
+    unverified/stale, `2` bad arguments; `--json` gives
+    `{ verdict, total, verified, unverified, artifactPath }`. CI, git hooks and
+    in-house schedulers gate on it.
+  - `whistleMode: strict` keeps rejecting every turn while unverified files remain.
+  - `hardGate: nag` (default): after a file write, the next non-read-only call is
+    denied once until selftest runs. File writes and read-only calls are always
+    allowed, so fix loops cannot deadlock; one denial per pending cycle; fail-open.
+- **Attack hardening** (12 adversarial cases in `test/attack.mjs`):
+  - `--audit` re-checks every file the evidence recorded, so rolling a file's
+    mtime back (outside the scan window) or deleting a verified file no longer
+    slips through.
+  - The hard gate only accepts a `selftest` aimed at the session's own tree; a
+    call with an unrelated `root` can no longer disarm it.
+  - Documented known boundary: correctly forged local evidence is accepted — it
+    is a plain JSON file with no secret, tested explicitly rather than hidden.
+
 ## 0.2.1
 
 - Fix the red CI on Linux: platform-aware test assertions (missing PowerShell, npm test
