@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.2
+
+- README install snippets no longer pin an old release (`dsh-selftest@0.2.1`);
+  they use the package name, so `npm i -g` / `npx` always get the latest.
+
 ## 0.3.1
 
 - **`--audit` and the whistle now read the configured evidence directory.**

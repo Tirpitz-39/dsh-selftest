@@ -63,8 +63,8 @@ Requires Node.js 18+.
 **From npm** (recommended):
 
 ```bash
-npm i -g dsh-selftest@0.2.1     # global CLI
-npx dsh-selftest@0.2.1           # or run it once
+npm i -g dsh-selftest     # global CLI
+npx dsh-selftest          # or run it once
 ```
 
 **As a DSH plugin**: `dsh plugin add dsh-selftest` (or place the package in the profile's `node_modules`) and enable it in DSH; the `selftest` tool is then available.

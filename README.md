@@ -63,8 +63,8 @@ AGENTS.md 里的「必须测试 / 必须检查」是写给人看的规则，忘�
 **从 npm 安装**（推荐）：
 
 ```bash
-npm i -g dsh-selftest@0.2.1     # 全局命令行
-npx dsh-selftest@0.2.1           # 或直接跑一次
+npm i -g dsh-selftest     # 全局命令行
+npx dsh-selftest          # 或直接跑一次
 ```
 
 **作为 DSH 插件**：`dsh plugin add dsh-selftest`（或把本包放进 profile 的 `node_modules`），在 DSH 里启用后即可使用 `selftest` 工具。
