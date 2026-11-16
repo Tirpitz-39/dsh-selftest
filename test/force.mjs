@@ -168,7 +168,13 @@ await test('audit CLI: exit 0 when fresh, 1 when changed', () => {
     })
     const run = () => {
       try {
-        execFileSync(process.execPath, [CLI, '--root', fixture.dir, '--audit'], { stdio: 'pipe', timeout: 30_000 })
+        // The child re-resolves config from its own env: on Linux that would
+        // point evidence at the phone cache, so pin it to the fixture.
+        execFileSync(process.execPath, [CLI, '--root', fixture.dir, '--audit'], {
+          stdio: 'pipe',
+          timeout: 30_000,
+          env: { ...process.env, DSH_SELFTEST_EVIDENCE_DIR: join(fixture.dir, '.dsh', 'selftest') },
+        })
         return 0
       } catch (error) {
         // Restricted sandboxes deny piped child processes; the CLI contract
