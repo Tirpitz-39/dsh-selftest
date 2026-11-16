@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.1
+
+- **`--audit` and the whistle now read the configured evidence directory.**
+  On Linux the default evidence directory lives under the DSH home
+  (`~/.dsh/cache/selftest`), but `readLatest` hard-coded `<root>/.dsh`, so on
+  every Linux host `--audit` returned `nothing` and the whistle never saw
+  evidence. `readLatest` now takes the evidence directory.
+- **CI Linux runners are not phones.** The phone default landing in the
+  runner's home made in-tree evidence assertions invisible; the external
+  default now applies only outside CI (`CI=true` keeps evidence in-tree).
+- Node 18: the enforcement suite uses `fileURLToPath(import.meta.url)` instead
+  of `import.meta.dirname` (Node >= 20.11), and pins its own evidence
+  directory instead of inheriting the platform default.
+- `test/support/sandbox.mjs` now ships with the package, so `npm test` works on
+  an unpacked tarball as well as in a checkout.
+- Tests: 9 suites / 167 cases; CI green on ubuntu/windows × node 18/20/22/24
+  plus macOS.
+
 ## 0.3.0
 
 - **Whistle** — the plugin now speaks on its own. At the end of a DSH turn that wrote

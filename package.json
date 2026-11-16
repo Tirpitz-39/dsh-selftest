@@ -1,6 +1,6 @@
 {
   "name": "dsh-selftest",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Derived self-check for changed files: parses PowerShell/JS/JSON with the right tool, runs the tests that belong to each changed plugin or project, and reports a per-file verdict.",
   "type": "module",
   "main": "lib/index.js",
