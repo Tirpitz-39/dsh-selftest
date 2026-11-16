@@ -295,6 +295,21 @@ await test('persistReport writes latest.json and the run artifact', () => {
   } finally { fixture.cleanup() }
 })
 
+await test('readLatest reads an external evidence directory (phone default)', () => {
+  // Regression: Linux (phone-class) defaults evidence outside the inspected
+  // tree, so a readLatest that hard-codes `<root>/.dsh` made --audit and the
+  // whistle see "no evidence" on every Linux host.
+  const fixture = makeFixture({})
+  const external = join(fixture.dir, 'external-evidence')
+  try {
+    mkdirSync(external, { recursive: true })
+    writeFileSync(join(external, 'latest.json'), JSON.stringify({ verdict: 'pass', files: [] }), 'utf8')
+    assert.equal(readLatest(fixture.dir), null, 'the in-tree path has no evidence here')
+    assert.equal(readLatest(fixture.dir, external).verdict, 'pass', 'the configured directory must be read')
+    assert.equal(readLatest(fixture.dir, ''), null, 'an empty setting still means in-tree')
+  } finally { fixture.cleanup() }
+})
+
 await test('expandStep splits a ps1 batch payload into per-file rows', () => {
   const step = { id: 'ps1:batch', kind: 'command', title: 'batch', listFiles: ['a.ps1'] }
   const outcome = {

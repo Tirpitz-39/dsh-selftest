@@ -83,7 +83,8 @@ function file(dir, rel, content) {
  * @param {string} dir
  */
 function evidenceOf(dir) {
-  const path = join(dir, '.dsh', 'selftest', 'latest.json')
+  const base = typeof CFG.evidenceDir === 'string' && CFG.evidenceDir !== '' ? CFG.evidenceDir : join(dir, '.dsh', 'selftest')
+  const path = join(base, 'latest.json')
   if (!existsSync(path)) return `MISSING(${path})`
   try {
     const artifact = JSON.parse(readFileSync(path, 'utf8'))
