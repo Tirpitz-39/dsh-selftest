@@ -7,7 +7,8 @@ import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { auditFreshness, formatAudit } from '../lib/audit.js'
 import { safeRealpath } from '../lib/collect.js'
@@ -19,7 +20,8 @@ import { isEperm } from './support/sandbox.mjs'
 
 process.env.DSH_SELFTEST_LANG = 'zh'
 const CFG = resolveConfig({ git: '' })
-const CLI = join(import.meta.dirname, '..', 'lib', 'cli.js')
+// `import.meta.dirname` is Node >= 20.11 only; the plugin supports Node 18.
+const CLI = join(dirname(fileURLToPath(import.meta.url)), '..', 'lib', 'cli.js')
 
 let passed = 0
 let failed = 0

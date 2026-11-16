@@ -83,7 +83,8 @@ await test('attack: mtime rollback cannot hide a tampered file from audit', asyn
   const fixture = tempDir()
   try {
     const path = file(fixture.dir, 'a.js', 'export const a = 1;\n')
-    await runSelftest({ root: fixture.dir, config: { git: '' } })
+    const run = await runSelftest({ root: fixture.dir, config: { git: '' } })
+    assert.equal(run.files.length, 1, `selftest must record the fresh file (verdict=${run.verdict})`)
     // Tamper, then hide the change outside the 10-minute mtime window.
     writeFileSync(path, 'export const a = 666;\n', 'utf8')
     const old = new Date(Date.now() - 2 * 60 * 60 * 1000)
@@ -112,7 +113,8 @@ await test('attack: deleting a verified file is caught', async () => {
   const fixture = tempDir()
   try {
     const path = file(fixture.dir, 'a.js', 'export const a = 1;\n')
-    await runSelftest({ root: fixture.dir, config: { git: '' } })
+    const run = await runSelftest({ root: fixture.dir, config: { git: '' } })
+    assert.equal(run.files.length, 1, `selftest must record the fresh file (verdict=${run.verdict})`)
     rmSync(path)
     const audit = auditFreshness({ root: fixture.dir, cfg: CFG })
     assert.equal(audit.verdict, 'unverified')
