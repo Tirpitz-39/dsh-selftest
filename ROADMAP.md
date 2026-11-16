@@ -10,7 +10,7 @@
 | 项 | 做什么 | 验收 | 状态 |
 |---|---|---|---|
 | 发布 0.3.0 | commit + push + CI 绿；npm publish | `npm view dsh-selftest version` = 0.3.0 | ✅ 0.3.0（`ba3b17b`），现 latest 0.3.2（`8654420`） |
-| release workflow | 打 tag → 矩阵测试 → 自动 publish（建议 npm OIDC trusted publishing，免 token） | 打一个预演 tag，Actions 自动发布成功 | ⚠️ 文件已就绪（`.github/workflows/release.yml`），**未配 `NPM_TOKEN` / OIDC**，打 tag 会红 |
+| release workflow | 打 tag → 矩阵测试 → 自动 publish（NPM_TOKEN secret） | 打一个预演 tag，Actions 自动发布成功 | ✅ `NPM_TOKEN` 已配；`v0.3.2` tag 跑通（2026-11-16 20:23，run 43865953367），publish 对已发布版本幂等跳过 |
 | 沙箱测试统一 | EPERM 的 skip 抽成公共 helper | 各套件复用同一个 helper，CI 里 0 意外失败 | ✅ `test/support/sandbox.mjs`（0.3.0 起随包发布） |
 | CI 补 macOS | 现在只有 ubuntu + windows | macOS 跑通一次 `npm test` | ✅ macOS 单 Node 22 作业 |
 
