@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.3
+
+- `pickPython` now probes the DSH runtime
+  (`$DSH_HOME/dsh-runtimes/*/dependencies/python`) before PATH. On Windows,
+  PATH often resolves `python` to a Microsoft Store execution alias that
+  PowerShell can spawn but `findOnPath` cannot stat as a regular file — `.py`
+  files were skipped with "no Python available" even though DSH ships a
+  working interpreter. Verified on the dev machine: `.py` files now get a real
+  `py_compile` check instead of a skip.
+
 ## 0.3.2
 
 - README install snippets no longer pin an old release (`dsh-selftest@0.2.1`);

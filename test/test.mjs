@@ -19,7 +19,7 @@ import { collectChanges, parsePorcelain, unquote } from '../lib/collect.js'
 import { buildPlan, deriveTestSteps, jsModuleKind, listTestFiles, parseJsonFile, pluginPolicySteps } from '../lib/plan.js'
 import { expandStep, formatResult, runSelftest } from '../lib/core.js'
 import { prune, persistReport, readLatest } from '../lib/report.js'
-import { findOnPath, isMobilePlatform, pickGit, pickParseScript, pickPwsh, resolveConfig } from '../lib/config.js'
+import { findOnPath, isMobilePlatform, pickGit, pickParseScript, pickPwsh, pickPython, resolveConfig } from '../lib/config.js'
 import { proveSelf } from '../lib/prove.js'
 import { apply, argumentList } from '../lib/index.js'
 
@@ -86,6 +86,19 @@ function makeFixture(files) {
 }
 
 /* ------------------------------------------------------------------ tests */
+
+await test('pickPython probes the DSH runtime before PATH', () => {
+  // Regression: Windows PATH often resolves python to a Microsoft Store
+  // execution alias that findOnPath cannot stat, so .py files were skipped
+  // with "no Python available" even though DSH ships a working interpreter.
+  const fixture = makeFixture({})
+  try {
+    const bundled = join(fixture.dir, 'dsh-runtimes', 'runtime-x', 'dependencies', 'python', 'python.exe')
+    mkdirSync(dirname(bundled), { recursive: true })
+    writeFileSync(bundled, 'stub', 'utf8')
+    assert.equal(pickPython('', fixture.dir), bundled)
+  } finally { fixture.cleanup() }
+})
 
 await test('parsePorcelain keeps edits, drops deletions, follows renames', () => {
   const text = [
