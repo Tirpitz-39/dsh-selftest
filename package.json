@@ -15,6 +15,7 @@
     "lib/*.mjs",
     "lib/*.ps1",
     "test/*.mjs",
+    "test/support/*.mjs",
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg",

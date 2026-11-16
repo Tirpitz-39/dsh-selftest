@@ -6,9 +6,9 @@
  * work. A test that needs to *capture* a child's output cannot run there; the
  * right answer is an explicit skip with a reason, never a false failure.
  *
- * Note: this helper file lives under `test/support/` and is intentionally not
- * listed in package.json `files` — the published package ships `test/*.mjs`
- * only, and these helpers are development-time only.
+ * Note: this helper lives under `test/support/` and ships with the package
+ * (`test/support/*.mjs` in package.json `files`), so `npm test` works on an
+ * unpacked tarball as well as in a checkout.
  */
 
 import { execFileSync } from 'node:child_process'
