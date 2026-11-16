@@ -19,7 +19,10 @@ import { attachToAgent } from '../lib/whistle.js'
 import { isEperm } from './support/sandbox.mjs'
 
 process.env.DSH_SELFTEST_LANG = 'zh'
-const CFG = resolveConfig({ git: '' })
+// The suite writes evidence next to each fixture (writeEvidence), so the
+// config must point there too — on Linux the default is the phone cache
+// directory (~/.dsh/cache/selftest), which would otherwise shadow the fixture.
+const CFG = { ...resolveConfig({ git: '' }), evidenceDir: '' }
 // `import.meta.dirname` is Node >= 20.11 only; the plugin supports Node 18.
 const CLI = join(dirname(fileURLToPath(import.meta.url)), '..', 'lib', 'cli.js')
 
