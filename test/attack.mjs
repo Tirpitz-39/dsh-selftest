@@ -8,7 +8,7 @@
  */
 
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -77,6 +77,23 @@ function file(dir, rel, content) {
   return path
 }
 
+/**
+ * Diagnostics for audit assertions: the evidence file is the thing under
+ * test, so a red assertion should say what was actually on disk.
+ * @param {string} dir
+ */
+function evidenceOf(dir) {
+  const path = join(dir, '.dsh', 'selftest', 'latest.json')
+  if (!existsSync(path)) return `MISSING(${path})`
+  try {
+    const artifact = JSON.parse(readFileSync(path, 'utf8'))
+    const files = Array.isArray(artifact.files) ? artifact.files : []
+    return JSON.stringify({ verdict: artifact.verdict, files: files.map(file => ({ path: file.path, signed: file.signature !== undefined })) })
+  } catch (error) {
+    return 'UNREADABLE(' + String(error?.message ?? error) + ')'
+  }
+}
+
 /* ------------------------------------------------------------------ audit */
 
 await test('attack: mtime rollback cannot hide a tampered file from audit', async () => {
@@ -91,7 +108,11 @@ await test('attack: mtime rollback cannot hide a tampered file from audit', asyn
     utimesSync(path, old, old)
 
     const audit = auditFreshness({ root: fixture.dir, cfg: CFG })
-    assert.equal(audit.verdict, 'unverified', 'a rolled-back mtime must not hide the change')
+    assert.equal(
+      audit.verdict,
+      'unverified',
+      `a rolled-back mtime must not hide the change; evidence=${evidenceOf(fixture.dir)} evidenceDir=${JSON.stringify(CFG.evidenceDir)} audit=${JSON.stringify(audit)}`,
+    )
     assert.equal(audit.unverified.length, 1)
   } finally { fixture.cleanup() }
 })
@@ -117,7 +138,11 @@ await test('attack: deleting a verified file is caught', async () => {
     assert.equal(run.files.length, 1, `selftest must record the fresh file (verdict=${run.verdict})`)
     rmSync(path)
     const audit = auditFreshness({ root: fixture.dir, cfg: CFG })
-    assert.equal(audit.verdict, 'unverified')
+    assert.equal(
+      audit.verdict,
+      'unverified',
+      `a deleted verified file must be caught; evidence=${evidenceOf(fixture.dir)} audit=${JSON.stringify(audit)}`,
+    )
     assert.ok(audit.unverified.some(entry => /删除|deleted/i.test(entry.reason)))
   } finally { fixture.cleanup() }
 })
