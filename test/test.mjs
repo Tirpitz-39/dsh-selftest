@@ -10,12 +10,13 @@
  */
 
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { collectChanges, parsePorcelain, unquote } from '../lib/collect.js'
+import { collectChanges, gitChangedFiles, parsePorcelain, unquote } from '../lib/collect.js'
 import { buildPlan, deriveTestSteps, jsModuleKind, listTestFiles, parseJsonFile, pluginPolicySteps } from '../lib/plan.js'
 import { expandStep, formatResult, runSelftest } from '../lib/core.js'
 import { prune, persistReport, readLatest } from '../lib/report.js'
@@ -116,6 +117,37 @@ await test('parsePorcelain keeps edits, drops deletions, follows renames', () =>
   assert.ok(files.some(f => f.endsWith('new\\name.js') || f.endsWith('new/name.js')), 'renamed path wins')
   assert.ok(files.some(f => f.endsWith('added.ps1')))
   assert.ok(!files.some(f => f.endsWith('gone.js')), 'deleted file dropped')
+})
+
+await test('untracked files outside the scan window are not treated as changed', () => {
+  // A scratch file created weeks ago and never committed stays in
+  // `git status` forever; "changed this turn" must be decided by mtime.
+  const git = pickGit('')
+  try {
+    execFileSync(git, ['--version'], { encoding: 'utf8', timeout: 10_000, stdio: ['ignore', 'pipe', 'pipe'] })
+  } catch (error) {
+    const code = /** @type {any} */ (error)?.code
+    if (code === 'EPERM' || code === 'ENOENT') {
+      console.log(`  - skip: git unavailable (${code})`)
+      return
+    }
+    throw error
+  }
+  const fixture = makeFixture({})
+  try {
+    execFileSync(git, ['init', '-q'], { cwd: fixture.dir, timeout: 20_000, stdio: ['ignore', 'pipe', 'pipe'] })
+    const stale = join(fixture.dir, 'stale.txt')
+    writeFileSync(stale, 'old\n', 'utf8')
+    const fresh = join(fixture.dir, 'fresh.js')
+    writeFileSync(fresh, 'export const fresh = 1\n', 'utf8')
+    const hoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000)
+    utimesSync(stale, hoursAgo, hoursAgo)
+
+    const result = gitChangedFiles(fixture.dir, { git, sinceMinutes: 10 })
+    const names = result.files.map(file => basename(file))
+    assert.ok(names.includes('fresh.js'), `fresh.js must be collected: ${names.join(',')}`)
+    assert.ok(!names.includes('stale.txt'), `stale untracked file must be filtered: ${names.join(',')}`)
+  } finally { fixture.cleanup() }
 })
 
 await test('unquote removes git C-style quoting', () => {

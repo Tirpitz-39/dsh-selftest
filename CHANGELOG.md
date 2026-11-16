@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.4
+
+- **Untracked files are judged by mtime.** A scratch file created weeks ago and
+  never committed stays in `git status` forever; the collector took every
+  untracked path as "changed this turn", so any workspace with old temporary
+  files produced a large, permanent "not verified" list (a real run showed 38
+  files, 30+ of them historical). Untracked paths now count only when their
+  mtime is inside the scan window. Tracked files whose content differs from
+  HEAD are still collected regardless of age — git already proved they changed.
+
 ## 0.3.3
 
 - `pickPython` now probes the DSH runtime

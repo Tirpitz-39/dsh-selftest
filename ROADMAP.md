@@ -40,3 +40,4 @@
 | 0.3.1 | `73c0742` | 修 `readLatest` 忽略 `evidenceDir`：Linux（手机类平台）上 `--audit` 恒返回 `nothing` |
 | 0.3.2 | `8654420` | README 安装命令不再钉死旧版本 |
 | 0.3.3 | `9d65154` | `pickPython` 优先探测 DSH 自带 Python：Windows 的 PATH 解析到商店别名，`findOnPath` 看不到，`.py` 曾被跳过 |
+| 0.3.4 | 本次 | untracked 文件按 mtime 窗口判定「本轮改动」：历史临时文件不再被当成未验证（实测 38 → 3） |
